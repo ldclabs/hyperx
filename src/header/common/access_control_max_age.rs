@@ -27,7 +27,7 @@ header! {
     (AccessControlMaxAge, "Access-Control-Max-Age") => [u32]
 
     test_access_control_max_age {
-        test_header!(test1, vec![b"531"]);
+        test_header!(test1, [b"531"]);
     }
 }
 

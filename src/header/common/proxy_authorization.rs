@@ -1,8 +1,8 @@
+use header::{Header, RawLike, Scheme};
 use std::any::Any;
 use std::fmt;
-use std::str::{FromStr, from_utf8};
 use std::ops::{Deref, DerefMut};
-use header::{Header, RawLike, Scheme};
+use std::str::{from_utf8, FromStr};
 
 /// `Proxy-Authorization` header, defined in [RFC7235](https://tools.ietf.org/html/rfc7235#section-4.4)
 ///
@@ -77,22 +77,29 @@ impl<S: Scheme> DerefMut for ProxyAuthorization<S> {
     }
 }
 
-impl<S: Scheme + Any> Header for ProxyAuthorization<S> where <S as FromStr>::Err: 'static {
+impl<S: Scheme + Any> Header for ProxyAuthorization<S>
+where
+    <S as FromStr>::Err: 'static,
+{
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Proxy-Authorization";
+        static NAME: &str = "Proxy-Authorization";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<ProxyAuthorization<S>>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         if let Some(line) = raw.one() {
             let header = from_utf8(line)?;
             if let Some(scheme) = <S as Scheme>::scheme() {
                 if header.starts_with(scheme) && header.len() > scheme.len() + 1 {
-                    match header[scheme.len() + 1..].parse::<S>().map(ProxyAuthorization) {
+                    match header[scheme.len() + 1..]
+                        .parse::<S>()
+                        .map(ProxyAuthorization)
+                    {
                         Ok(h) => Ok(h),
-                        Err(_) => Err(::Error::Header)
+                        Err(_) => Err(::Error::Header),
                     }
                 } else {
                     Err(::Error::Header)
@@ -100,7 +107,7 @@ impl<S: Scheme + Any> Header for ProxyAuthorization<S> where <S as FromStr>::Err
             } else {
                 match header.parse::<S>().map(ProxyAuthorization) {
                     Ok(h) => Ok(h),
-                    Err(_) => Err(::Error::Header)
+                    Err(_) => Err(::Error::Header),
                 }
             }
         } else {
@@ -123,9 +130,36 @@ impl<S: Scheme> fmt::Display for ProxyAuthorization<S> {
 }
 
 #[cfg(test)]
-mod tests {
+#[cfg(feature = "nightly")]
+mod benches {
     use super::ProxyAuthorization;
-    use super::super::super::{Header, Raw, Basic, Bearer};
+    use header::{Basic, Bearer};
+
+    bench_header!(raw, ProxyAuthorization<String>, {
+        vec![b"foo bar baz".to_vec()]
+    });
+    bench_header!(basic, ProxyAuthorization<Basic>, {
+        vec![b"Basic QWxhZGRpbjpuIHNlc2FtZQ==".to_vec()]
+    });
+    bench_header!(bearer, ProxyAuthorization<Bearer>, {
+        vec![b"Bearer fpKL54jvWmEGVoRdCNjG".to_vec()]
+    });
+}
+
+impl<S> ::header::StandardHeader for ProxyAuthorization<S>
+where
+    S: Scheme + Any,
+{
+    #[inline]
+    fn http_header_name() -> ::http::header::HeaderName {
+        ::http::header::PROXY_AUTHORIZATION
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::super::{Basic, Bearer, Header, Raw};
+    use super::ProxyAuthorization;
 
     #[cfg(feature = "headers")]
     use super::super::super::Headers;
@@ -135,7 +169,10 @@ mod tests {
     fn test_raw_auth() {
         let mut headers = Headers::new();
         headers.set(ProxyAuthorization("foo bar baz".to_owned()));
-        assert_eq!(headers.to_string(), "Proxy-Authorization: foo bar baz\r\n".to_owned());
+        assert_eq!(
+            headers.to_string(),
+            "Proxy-Authorization: foo bar baz\r\n".to_owned()
+        );
     }
 
     #[test]
@@ -149,19 +186,28 @@ mod tests {
     #[test]
     fn test_basic_auth() {
         let mut headers = Headers::new();
-        headers.set(ProxyAuthorization(
-            Basic { username: "Aladdin".to_owned(), password: Some("open sesame".to_owned()) }));
+        headers.set(ProxyAuthorization(Basic {
+            username: "Aladdin".to_owned(),
+            password: Some("open sesame".to_owned()),
+        }));
         assert_eq!(
             headers.to_string(),
-            "Proxy-Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==\r\n".to_owned());
+            "Proxy-Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==\r\n".to_owned()
+        );
     }
 
     #[cfg(feature = "headers")]
     #[test]
     fn test_basic_auth_no_password() {
         let mut headers = Headers::new();
-        headers.set(ProxyAuthorization(Basic { username: "Aladdin".to_owned(), password: None }));
-        assert_eq!(headers.to_string(), "Proxy-Authorization: Basic QWxhZGRpbjo=\r\n".to_owned());
+        headers.set(ProxyAuthorization(Basic {
+            username: "Aladdin".to_owned(),
+            password: None,
+        }));
+        assert_eq!(
+            headers.to_string(),
+            "Proxy-Authorization: Basic QWxhZGRpbjo=\r\n".to_owned()
+        );
     }
 
     #[test]
@@ -184,11 +230,13 @@ mod tests {
     #[test]
     fn test_bearer_auth() {
         let mut headers = Headers::new();
-        headers.set(ProxyAuthorization(
-            Bearer { token: "fpKL54jvWmEGVoRdCNjG".to_owned() }));
+        headers.set(ProxyAuthorization(Bearer {
+            token: "fpKL54jvWmEGVoRdCNjG".to_owned(),
+        }));
         assert_eq!(
             headers.to_string(),
-            "Proxy-Authorization: Bearer fpKL54jvWmEGVoRdCNjG\r\n".to_owned());
+            "Proxy-Authorization: Bearer fpKL54jvWmEGVoRdCNjG\r\n".to_owned()
+        );
     }
 
     #[test]
@@ -196,25 +244,5 @@ mod tests {
         let r: Raw = b"Bearer fpKL54jvWmEGVoRdCNjG".as_ref().into();
         let auth: ProxyAuthorization<Bearer> = Header::parse_header(&r).unwrap();
         assert_eq!(auth.0.token, "fpKL54jvWmEGVoRdCNjG");
-    }
-}
-
-#[cfg(test)]
-#[cfg(feature = "nightly")]
-mod benches {
-    use super::ProxyAuthorization;
-    use ::header::{Basic, Bearer};
-
-    bench_header!(raw, ProxyAuthorization<String>, { vec![b"foo bar baz".to_vec()] });
-    bench_header!(basic, ProxyAuthorization<Basic>, { vec![b"Basic QWxhZGRpbjpuIHNlc2FtZQ==".to_vec()] });
-    bench_header!(bearer, ProxyAuthorization<Bearer>, { vec![b"Bearer fpKL54jvWmEGVoRdCNjG".to_vec()] });
-}
-
-impl<S> ::header::StandardHeader for ProxyAuthorization<S>
-    where S: Scheme + Any
-{
-    #[inline]
-    fn http_header_name() -> ::http::header::HeaderName {
-        ::http::header::PROXY_AUTHORIZATION
     }
 }

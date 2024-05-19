@@ -60,7 +60,7 @@ header! {
     (AccessControlExposeHeaders, "Access-Control-Expose-Headers") => (Ascii<String>)*
 
     test_access_control_expose_headers {
-        test_header!(test1, vec![b"etag, content-length"]);
+        test_header!(test1, [b"etag, content-length"]);
     }
 }
 

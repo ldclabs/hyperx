@@ -25,7 +25,7 @@ header! {
     (From, "From") => [String]
 
     test_from {
-        test_header!(test1, vec![b"webmaster@example.org"]);
+        test_header!(test1, [b"webmaster@example.org"]);
     }
 }
 

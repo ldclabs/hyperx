@@ -67,9 +67,9 @@ header! {
 
     test_te {
         // From the RFC
-        test_header!(test1, vec![b"trailers"]);
-        test_header!(test2, vec![b"trailers, deflate;q=0.5"]);
-        test_header!(test3, vec![b""]);
+        test_header!(test1, [b"trailers"]);
+        test_header!(test2, [b"trailers, deflate;q=0.5"]);
+        test_header!(test3, [b""]);
     }
 }
 

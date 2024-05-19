@@ -1,7 +1,6 @@
+use header::{Header, RawLike};
 use std::fmt::{self, Display};
 use std::str;
-
-use header::{Header, RawLike};
 
 /// The `Access-Control-Allow-Origin` response header,
 /// part of [CORS](http://www.w3.org/TR/cors/#access-control-allow-origin-response-header)
@@ -65,13 +64,14 @@ impl Header for AccessControlAllowOrigin {
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<AccessControlAllowOrigin>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         if let Some(line) = raw.one() {
             Ok(match line {
                 b"*" => AccessControlAllowOrigin::Any,
                 b"null" => AccessControlAllowOrigin::Null,
-                _ => AccessControlAllowOrigin::Value(str::from_utf8(line)?.into())
+                _ => AccessControlAllowOrigin::Value(str::from_utf8(line)?.into()),
             })
         } else {
             Err(::Error::Header)
@@ -95,11 +95,11 @@ impl Display for AccessControlAllowOrigin {
 
 #[cfg(test)]
 mod test_access_control_allow_origin {
-    use header::*;
     use super::AccessControlAllowOrigin as HeaderField;
-    test_header!(test1, vec![b"null"]);
-    test_header!(test2, vec![b"*"]);
-    test_header!(test3, vec![b"http://google.com/"]);
+    use header::*;
+    test_header!(test1, [b"null"]);
+    test_header!(test2, [b"*"]);
+    test_header!(test3, [b"http://google.com/"]);
 }
 
 standard_header!(AccessControlAllowOrigin, ACCESS_CONTROL_ALLOW_ORIGIN);

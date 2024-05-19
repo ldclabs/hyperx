@@ -1,6 +1,5 @@
+use header::{qitem, QualityItem};
 use mime::{self, Mime};
-
-use header::{QualityItem, qitem};
 
 header! {
     /// `Accept` header, defined in [RFC7231](http://tools.ietf.org/html/rfc7231#section-5.3.2)
@@ -147,6 +146,8 @@ impl Accept {
     }
 }
 
-bench_header!(bench, Accept, { vec![b"text/plain; q=0.5, text/html".to_vec()] });
+bench_header!(bench, Accept, {
+    vec![b"text/plain; q=0.5, text/html".to_vec()]
+});
 
 standard_header!(Accept, ACCEPT);

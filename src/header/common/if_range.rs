@@ -1,5 +1,5 @@
+use header::{self, EntityTag, Header, HttpDate, RawLike};
 use std::fmt::{self, Display};
-use header::{self, Header, RawLike, EntityTag, HttpDate};
 
 /// `If-Range` header, defined in [RFC7233](http://tools.ietf.org/html/rfc7233#section-3.2)
 ///
@@ -56,11 +56,12 @@ pub enum IfRange {
 
 impl Header for IfRange {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "If-Range";
+        static NAME: &str = "If-Range";
         NAME
     }
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<IfRange>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         let etag: ::Result<EntityTag> = header::parsing::from_one_raw_str(raw);
         if let Ok(etag) = etag {
@@ -89,11 +90,11 @@ impl Display for IfRange {
 
 #[cfg(test)]
 mod test_if_range {
-    use std::str;
-    use header::*;
     use super::IfRange as HeaderField;
-    test_header!(test1, vec![b"Sat, 29 Oct 1994 19:43:31 GMT"]);
-    test_header!(test2, vec![b"\"xyzzy\""]);
+    use header::*;
+    use std::str;
+    test_header!(test1, [b"Sat, 29 Oct 1994 19:43:31 GMT"]);
+    test_header!(test2, [b"\"xyzzy\""]);
     test_header!(test3, vec![b"this-is-invalid"], None::<IfRange>);
 }
 

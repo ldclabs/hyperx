@@ -28,7 +28,7 @@ header! {
     (AccessControlRequestMethod, "Access-Control-Request-Method") => [Method]
 
     test_access_control_request_method {
-        test_header!(test1, vec![b"GET"]);
+        test_header!(test1, [b"GET"]);
     }
 }
 

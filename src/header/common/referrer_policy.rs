@@ -1,6 +1,5 @@
+use header::{parsing, Header, RawLike};
 use std::fmt;
-
-use header::{Header, RawLike, parsing};
 
 /// `Referrer-Policy` header, part of
 /// [Referrer Policy](https://www.w3.org/TR/referrer-policy/#referrer-policy-header)
@@ -47,7 +46,7 @@ pub enum ReferrerPolicy {
     OriginWhenCrossOrigin,
     /// `unsafe-url`
     UnsafeUrl,
-     /// `strict-origin`
+    /// `strict-origin`
     StrictOrigin,
     ///`strict-origin-when-cross-origin`
     StrictOriginWhenCrossOrigin,
@@ -55,12 +54,13 @@ pub enum ReferrerPolicy {
 
 impl Header for ReferrerPolicy {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Referrer-Policy";
+        static NAME: &str = "Referrer-Policy";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<ReferrerPolicy>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         use self::ReferrerPolicy::*;
         // See https://www.w3.org/TR/referrer-policy/#determine-policy-for-token

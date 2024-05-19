@@ -7,7 +7,7 @@ impl<K: PartialEq, V> VecMap<K, V> {
     #[inline]
     pub fn with_capacity(cap: usize) -> VecMap<K, V> {
         VecMap {
-            vec: Vec::with_capacity(cap)
+            vec: Vec::with_capacity(cap),
         }
     }
 
@@ -39,7 +39,7 @@ impl<K: PartialEq, V> VecMap<K, V> {
             None => Entry::Vacant(VacantEntry {
                 vec: &mut self.vec,
                 key: key,
-            })
+            }),
         }
     }
 
@@ -61,7 +61,9 @@ impl<K: PartialEq, V> VecMap<K, V> {
     }
 
     #[inline]
-    pub fn len(&self) -> usize { self.vec.len() }
+    pub fn len(&self) -> usize {
+        self.vec.len()
+    }
 
     #[inline]
     pub fn iter(&self) -> ::std::slice::Iter<(K, V)> {
@@ -71,7 +73,9 @@ impl<K: PartialEq, V> VecMap<K, V> {
     #[cfg(feature = "headers")]
     #[inline]
     pub fn remove<K2: PartialEq<K> + ?Sized>(&mut self, key: &K2) -> Option<V> {
-        self.pos(key).map(|pos| self.vec.remove(pos)).map(|(_, v)| v)
+        self.pos(key)
+            .map(|pos| self.vec.remove(pos))
+            .map(|(_, v)| v)
     }
 
     #[inline]
@@ -92,12 +96,7 @@ impl<K: PartialEq, V> VecMap<K, V> {
 
     #[inline]
     fn find<K2: PartialEq<K> + ?Sized>(&self, key: &K2) -> Option<&(K, V)> {
-        for entry in &self.vec {
-            if key == &entry.0 {
-                return Some(entry);
-            }
-        }
-        None
+        self.vec.iter().find(|&entry| key == &entry.0)
     }
 
     #[cfg(feature = "headers")]
@@ -121,7 +120,7 @@ impl<K: PartialEq, V> VecMap<K, V> {
 #[cfg(feature = "headers")]
 pub enum Entry<'a, K: 'a, V: 'a> {
     Vacant(VacantEntry<'a, K, V>),
-    Occupied(OccupiedEntry<'a, K, V>)
+    Occupied(OccupiedEntry<'a, K, V>),
 }
 
 #[cfg(feature = "headers")]

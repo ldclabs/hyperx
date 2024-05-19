@@ -1,6 +1,5 @@
+use header::{parsing, Header, RawLike};
 use std::fmt;
-
-use header::{Header, RawLike, parsing};
 
 /// `Content-Length` header, defined in
 /// [RFC7230](http://tools.ietf.org/html/rfc7230#section-3.3.2)
@@ -46,25 +45,24 @@ pub struct ContentLength(pub u64);
 impl Header for ContentLength {
     #[inline]
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Content-Length";
+        static NAME: &str = "Content-Length";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<ContentLength>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         // If multiple Content-Length headers were sent, everything can still
         // be alright if they all contain the same value, and all parse
         // correctly. If not, then it's an error.
         raw.iter()
             .map(parsing::from_raw_str)
-            .fold(None, |prev, x| {
-                match (prev, x) {
-                    (None, x) => Some(x),
-                    (e @ Some(Err(_)), _ ) => e,
-                    (Some(Ok(prev)), Ok(x)) if prev == x => Some(Ok(prev)),
-                    _ => Some(Err(::Error::Header)),
-                }
+            .fold(None, |prev, x| match (prev, x) {
+                (None, x) => Some(x),
+                (e @ Some(Err(_)), _) => e,
+                (Some(Ok(prev)), Ok(x)) if prev == x => Some(Ok(prev)),
+                _ => Some(Err(::Error::Header)),
             })
             .unwrap_or(Err(::Error::Header))
             .map(ContentLength)

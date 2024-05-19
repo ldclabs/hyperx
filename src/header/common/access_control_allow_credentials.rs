@@ -1,7 +1,7 @@
+use header::{Header, RawLike};
 use std::fmt::{self, Display};
 use std::str;
 use unicase;
-use header::{Header, RawLike};
 
 /// `Access-Control-Allow-Credentials` header, part of
 /// [CORS](http://www.w3.org/TR/cors/#access-control-allow-headers-response-header)
@@ -41,16 +41,17 @@ use header::{Header, RawLike};
 #[derive(Clone, PartialEq, Debug)]
 pub struct AccessControlAllowCredentials;
 
-const ACCESS_CONTROL_ALLOW_CREDENTIALS_TRUE: &'static str = "true";
+const ACCESS_CONTROL_ALLOW_CREDENTIALS_TRUE: &str = "true";
 
 impl Header for AccessControlAllowCredentials {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Access-Control-Allow-Credentials";
+        static NAME: &str = "Access-Control-Allow-Credentials";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<AccessControlAllowCredentials>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         if let Some(line) = raw.one() {
             let text = unsafe {
@@ -81,14 +82,21 @@ impl Display for AccessControlAllowCredentials {
 
 #[cfg(test)]
 mod test_access_control_allow_credentials {
-    use std::str;
-    use header::*;
     use super::AccessControlAllowCredentials as HeaderField;
-    test_header!(works,        vec![b"true"], Some(HeaderField));
-    test_header!(ignores_case, vec![b"True"]);
-    test_header!(not_bool,     vec![b"false"], None);
-    test_header!(only_single,  vec![b"true", b"true"], None);
-    test_header!(no_gibberish, vec!["\u{645}\u{631}\u{62d}\u{628}\u{627}".as_bytes()], None);
+    use header::*;
+    use std::str;
+    test_header!(works, vec![b"true"], Some(HeaderField));
+    test_header!(ignores_case, [b"True"]);
+    test_header!(not_bool, vec![b"false"], None);
+    test_header!(only_single, vec![b"true", b"true"], None);
+    test_header!(
+        no_gibberish,
+        vec!["\u{645}\u{631}\u{62d}\u{628}\u{627}".as_bytes()],
+        None
+    );
 }
 
-standard_header!(AccessControlAllowCredentials, ACCESS_CONTROL_ALLOW_CREDENTIALS);
+standard_header!(
+    AccessControlAllowCredentials,
+    ACCESS_CONTROL_ALLOW_CREDENTIALS
+);

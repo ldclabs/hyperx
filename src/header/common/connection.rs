@@ -2,10 +2,10 @@ use std::fmt::{self, Display};
 use std::str::FromStr;
 use unicase::Ascii;
 
-pub use self::ConnectionOption::{KeepAlive, Close, ConnectionHeader};
+pub use self::ConnectionOption::{Close, ConnectionHeader, KeepAlive};
 
-static KEEP_ALIVE: &'static str = "keep-alive";
-static CLOSE: &'static str = "close";
+static KEEP_ALIVE: &str = "keep-alive";
+static CLOSE: &str = "close";
 
 /// Values that can be in the `Connection` header.
 #[derive(Clone, PartialEq, Debug)]
@@ -43,7 +43,7 @@ impl Display for ConnectionOption {
         f.write_str(match *self {
             KeepAlive => "keep-alive",
             Close => "close",
-            ConnectionHeader(ref s) => s.as_ref()
+            ConnectionHeader(ref s) => s.as_ref(),
         })
     }
 }
@@ -101,9 +101,9 @@ header! {
     (Connection, "Connection") => (ConnectionOption)+
 
     test_connection {
-        test_header!(test1, vec![b"close"]);
-        test_header!(test2, vec![b"keep-alive"]);
-        test_header!(test3, vec![b"upgrade"]);
+        test_header!(test1, [b"close"]);
+        test_header!(test2, [b"keep-alive"]);
+        test_header!(test3, [b"upgrade"]);
     }
 }
 
@@ -127,7 +127,7 @@ bench_header!(header, Connection, { vec![b"authorization".to_vec()] });
 
 #[cfg(test)]
 mod tests {
-    use super::{Connection,ConnectionHeader};
+    use super::{Connection, ConnectionHeader};
     use header::{Header, Raw};
     use unicase::Ascii;
 
@@ -139,11 +139,19 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        assert_eq!(Connection::close(),parse_option(b"close".to_vec()));
-        assert_eq!(Connection::keep_alive(),parse_option(b"keep-alive".to_vec()));
-        assert_eq!(Connection::keep_alive(),parse_option(b"Keep-Alive".to_vec()));
-        assert_eq!(Connection(vec![ConnectionHeader(Ascii::new("upgrade".to_owned()))]),
-            parse_option(b"upgrade".to_vec()));
+        assert_eq!(Connection::close(), parse_option(b"close".to_vec()));
+        assert_eq!(
+            Connection::keep_alive(),
+            parse_option(b"keep-alive".to_vec())
+        );
+        assert_eq!(
+            Connection::keep_alive(),
+            parse_option(b"Keep-Alive".to_vec())
+        );
+        assert_eq!(
+            Connection(vec![ConnectionHeader(Ascii::new("upgrade".to_owned()))]),
+            parse_option(b"upgrade".to_vec())
+        );
     }
 }
 

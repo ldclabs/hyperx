@@ -34,12 +34,18 @@ header! {
 
     test_if_modified_since {
         // Testcase from RFC
-        test_header!(test1, vec![b"Sat, 29 Oct 1994 19:43:31 GMT"]);
+        test_header!(test1, [b"Sat, 29 Oct 1994 19:43:31 GMT"]);
     }
 }
 
-bench_header!(imf_fixdate, IfModifiedSince, { vec![b"Mon, 07 Nov 1994 08:48:37 GMT".to_vec()] });
-bench_header!(rfc_850, IfModifiedSince, { vec![b"Sunday, 06-Nov-94 08:49:37 GMT".to_vec()] });
-bench_header!(asctime, IfModifiedSince, { vec![b"Sun Nov  6 08:49:37 1994".to_vec()] });
+bench_header!(imf_fixdate, IfModifiedSince, {
+    vec![b"Mon, 07 Nov 1994 08:48:37 GMT".to_vec()]
+});
+bench_header!(rfc_850, IfModifiedSince, {
+    vec![b"Sunday, 06-Nov-94 08:49:37 GMT".to_vec()]
+});
+bench_header!(asctime, IfModifiedSince, {
+    vec![b"Sun Nov  6 08:49:37 1994".to_vec()]
+});
 
 standard_header!(IfModifiedSince, IF_MODIFIED_SINCE);

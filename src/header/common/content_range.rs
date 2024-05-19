@@ -95,7 +95,7 @@ pub enum ContentRangeSpec {
         range: Option<(u64, u64)>,
 
         /// Total length of the instance, can be omitted if unknown
-        instance_length: Option<u64>
+        instance_length: Option<u64>,
     },
 
     /// Custom range, with unit not registered at IANA
@@ -104,15 +104,15 @@ pub enum ContentRangeSpec {
         unit: String,
 
         /// other-range-resp
-        resp: String
-    }
+        resp: String,
+    },
 }
 
 fn split_in_two(s: &str, separator: char) -> Option<(&str, &str)> {
     let mut iter = s.splitn(2, separator);
     match (iter.next(), iter.next()) {
         (Some(a), Some(b)) => Some((a, b)),
-        _ => None
+        _ => None,
     }
 }
 
@@ -133,7 +133,8 @@ impl FromStr for ContentRangeSpec {
                 let range = if range == "*" {
                     None
                 } else {
-                    let (first_byte, last_byte) = split_in_two(range, '-').ok_or(::Error::Header)?;
+                    let (first_byte, last_byte) =
+                        split_in_two(range, '-').ok_or(::Error::Header)?;
                     let first_byte = first_byte.parse().map_err(|_| ::Error::Header)?;
                     let last_byte = last_byte.parse().map_err(|_| ::Error::Header)?;
                     if last_byte < first_byte {
@@ -143,17 +144,15 @@ impl FromStr for ContentRangeSpec {
                 };
 
                 ContentRangeSpec::Bytes {
-                    range: range,
-                    instance_length: instance_length
+                    range,
+                    instance_length,
                 }
             }
-            Some((unit, resp)) => {
-                ContentRangeSpec::Unregistered {
-                    unit: unit.to_owned(),
-                    resp: resp.to_owned()
-                }
-            }
-            _ => return Err(::Error::Header)
+            Some((unit, resp)) => ContentRangeSpec::Unregistered {
+                unit: unit.to_owned(),
+                resp: resp.to_owned(),
+            },
+            _ => return Err(::Error::Header),
         };
         Ok(res)
     }
@@ -162,12 +161,15 @@ impl FromStr for ContentRangeSpec {
 impl Display for ContentRangeSpec {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ContentRangeSpec::Bytes { range, instance_length } => {
+            ContentRangeSpec::Bytes {
+                range,
+                instance_length,
+            } => {
                 f.write_str("bytes ")?;
                 match range {
                     Some((first_byte, last_byte)) => {
                         write!(f, "{}-{}", first_byte, last_byte)?;
-                    },
+                    }
                     None => {
                         f.write_str("*")?;
                     }
@@ -180,7 +182,7 @@ impl Display for ContentRangeSpec {
                 }
             }
             ContentRangeSpec::Unregistered { ref unit, ref resp } => {
-                f.write_str(&unit)?;
+                f.write_str(unit)?;
                 f.write_str(" ")?;
                 f.write_str(resp)
             }

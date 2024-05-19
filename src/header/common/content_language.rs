@@ -1,5 +1,5 @@
-use language_tags::LanguageTag;
 use header::QualityItem;
+use language_tags::LanguageTag;
 
 header! {
     /// `Content-Language` header, defined in
@@ -58,8 +58,8 @@ header! {
     (ContentLanguage, "Content-Language") => (QualityItem<LanguageTag>)+
 
     test_content_language {
-        test_header!(test1, vec![b"da"]);
-        test_header!(test2, vec![b"mi, en"]);
+        test_header!(test1, [b"da"]);
+        test_header!(test2, [b"mi, en"]);
     }
 }
 

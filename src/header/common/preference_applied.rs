@@ -1,6 +1,6 @@
+use header::parsing::{fmt_comma_delimited, from_comma_delimited};
+use header::{Header, Preference, RawLike};
 use std::fmt;
-use header::{Header, RawLike, Preference};
-use header::parsing::{from_comma_delimited, fmt_comma_delimited};
 
 /// `Preference-Applied` header, defined in [RFC7240](http://tools.ietf.org/html/rfc7240)
 ///
@@ -60,12 +60,13 @@ __hyper__deref!(PreferenceApplied => Vec<Preference>);
 
 impl Header for PreferenceApplied {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Preference-Applied";
+        static NAME: &str = "Preference-Applied";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<PreferenceApplied>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         let preferences = from_comma_delimited(raw)?;
         if !preferences.is_empty() {
@@ -83,36 +84,48 @@ impl Header for PreferenceApplied {
 impl fmt::Display for PreferenceApplied {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         //TODO: format this without allocating a Vec and cloning contents
-        let preferences: Vec<_> = self.0.iter().map(|pref| match pref {
-            // The spec ignores parameters in `Preferences-Applied`
-            &Preference::Extension(ref name, ref value, _) => Preference::Extension(
-              name.to_owned(),
-              value.to_owned(),
-              vec![]
-            ),
-            preference => preference.clone()
-        }).collect();
+        let preferences: Vec<_> = self
+            .0
+            .iter()
+            .map(|pref| match pref {
+                // The spec ignores parameters in `Preferences-Applied`
+                Preference::Extension(name, value, _) => {
+                    Preference::Extension(name.to_owned(), value.to_owned(), vec![])
+                }
+                preference => preference.clone(),
+            })
+            .collect();
         fmt_comma_delimited(f, &preferences)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use header::Preference;
     use super::*;
+    use header::Preference;
 
     #[test]
     fn test_format_ignore_parameters() {
         assert_eq!(
-            format!("{}", PreferenceApplied(vec![Preference::Extension(
-                "foo".to_owned(),
-                "bar".to_owned(),
-                vec![("bar".to_owned(), "foo".to_owned()), ("buz".to_owned(), "".to_owned())]
-            )])),
+            format!(
+                "{}",
+                PreferenceApplied(vec![Preference::Extension(
+                    "foo".to_owned(),
+                    "bar".to_owned(),
+                    vec![
+                        ("bar".to_owned(), "foo".to_owned()),
+                        ("buz".to_owned(), "".to_owned())
+                    ]
+                )])
+            ),
             "foo=bar".to_owned()
         );
     }
 }
 
-bench_header!(normal,
-    PreferenceApplied, { vec![b"respond-async, return=representation".to_vec(), b"wait=100".to_vec()] });
+bench_header!(normal, PreferenceApplied, {
+    vec![
+        b"respond-async, return=representation".to_vec(),
+        b"wait=100".to_vec(),
+    ]
+});

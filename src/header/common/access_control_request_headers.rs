@@ -58,7 +58,7 @@ header! {
     (AccessControlRequestHeaders, "Access-Control-Request-Headers") => (Ascii<String>)*
 
     test_access_control_request_headers {
-        test_header!(test1, vec![b"accept-language, date"]);
+        test_header!(test1, [b"accept-language, date"]);
     }
 }
 

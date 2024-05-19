@@ -1,13 +1,11 @@
 //! The HTTP request method
+use error::Error;
+use http;
+use std::convert::{AsRef, TryFrom};
 use std::fmt;
 use std::str::FromStr;
-use std::convert::{AsRef, TryFrom};
 
-use http;
-
-use error::Error;
-use self::Method::{Options, Get, Post, Put, Delete, Head, Trace, Connect, Patch,
-                   Extension};
+use self::Method::{Connect, Delete, Extension, Get, Head, Options, Patch, Post, Put, Trace};
 
 /// The Request Method (VERB)
 ///
@@ -38,7 +36,7 @@ pub enum Method {
     /// PATCH
     Patch,
     /// Method extensions. An example would be `let m = Extension("FOO".to_string())`.
-    Extension(String)
+    Extension(String),
 }
 
 impl AsRef<str> for Method {
@@ -53,7 +51,7 @@ impl AsRef<str> for Method {
             Trace => "TRACE",
             Connect => "CONNECT",
             Patch => "PATCH",
-            Extension(ref s) => s.as_ref()
+            Extension(ref s) => s.as_ref(),
         }
     }
 }
@@ -67,7 +65,7 @@ impl Method {
     pub fn safe(&self) -> bool {
         match *self {
             Get | Head | Options | Trace => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -82,7 +80,7 @@ impl Method {
         } else {
             match *self {
                 Put | Delete => true,
-                _ => false
+                _ => false,
             }
         }
     }
@@ -146,7 +144,7 @@ impl fmt::Display for Method {
             Trace => "TRACE",
             Connect => "CONNECT",
             Patch => "PATCH",
-            Extension(ref s) => s.as_ref()
+            Extension(ref s) => s.as_ref(),
         })
     }
 }
@@ -160,57 +158,37 @@ impl Default for Method {
 impl From<http::Method> for Method {
     fn from(method: http::Method) -> Method {
         match method {
-            http::Method::GET =>
-                Method::Get,
-            http::Method::POST =>
-                Method::Post,
-            http::Method::PUT =>
-                Method::Put,
-            http::Method::DELETE =>
-                Method::Delete,
-            http::Method::HEAD =>
-                Method::Head,
-            http::Method::OPTIONS =>
-                Method::Options,
-            http::Method::CONNECT =>
-                Method::Connect,
-            http::Method::PATCH =>
-                Method::Patch,
-            http::Method::TRACE =>
-                Method::Trace,
-            _ => {
-                method.as_ref().parse()
-                    .expect("attempted to convert invalid method")
-            }
+            http::Method::GET => Method::Get,
+            http::Method::POST => Method::Post,
+            http::Method::PUT => Method::Put,
+            http::Method::DELETE => Method::Delete,
+            http::Method::HEAD => Method::Head,
+            http::Method::OPTIONS => Method::Options,
+            http::Method::CONNECT => Method::Connect,
+            http::Method::PATCH => Method::Patch,
+            http::Method::TRACE => Method::Trace,
+            _ => method
+                .as_ref()
+                .parse()
+                .expect("attempted to convert invalid method"),
         }
     }
 }
 
 impl From<Method> for http::Method {
     fn from(method: Method) -> http::Method {
-
         match method {
-            Method::Get =>
-                http::Method::GET,
-            Method::Post =>
-                http::Method::POST,
-            Method::Put =>
-                http::Method::PUT,
-            Method::Delete =>
-                http::Method::DELETE,
-            Method::Head =>
-                http::Method::HEAD,
-            Method::Options =>
-                http::Method::OPTIONS,
-            Method::Connect =>
-                http::Method::CONNECT,
-            Method::Patch =>
-                http::Method::PATCH,
-            Method::Trace =>
-                http::Method::TRACE,
+            Method::Get => http::Method::GET,
+            Method::Post => http::Method::POST,
+            Method::Put => http::Method::PUT,
+            Method::Delete => http::Method::DELETE,
+            Method::Head => http::Method::HEAD,
+            Method::Options => http::Method::OPTIONS,
+            Method::Connect => http::Method::CONNECT,
+            Method::Patch => http::Method::PATCH,
+            Method::Trace => http::Method::TRACE,
             Method::Extension(s) => {
-                http::Method::try_from(s.as_str())
-                    .expect("attempted to convert invalid method")
+                http::Method::try_from(s.as_str()).expect("attempted to convert invalid method")
             }
         }
     }
@@ -218,31 +196,33 @@ impl From<Method> for http::Method {
 
 #[cfg(test)]
 mod tests {
+    use super::Method;
+    use super::Method::{Extension, Get, Post, Put};
+    use error::Error;
     use std::collections::HashMap;
     use std::convert::TryFrom;
     use std::str::FromStr;
-    use error::Error;
-    use super::Method;
-    use super::Method::{Get, Post, Put, Extension};
 
     #[test]
     fn test_safe() {
-        assert_eq!(true, Get.safe());
-        assert_eq!(false, Post.safe());
+        assert!(Get.safe());
+        assert!(!Post.safe());
     }
 
     #[test]
     fn test_idempotent() {
-        assert_eq!(true, Get.idempotent());
-        assert_eq!(true, Put.idempotent());
-        assert_eq!(false, Post.idempotent());
+        assert!(Get.idempotent());
+        assert!(Put.idempotent());
+        assert!(!Post.idempotent());
     }
 
     #[test]
     fn test_from_str() {
         assert_eq!(Get, FromStr::from_str("GET").unwrap());
-        assert_eq!(Extension("MOVE".to_owned()),
-                   FromStr::from_str("MOVE").unwrap());
+        assert_eq!(
+            Extension("MOVE".to_owned()),
+            FromStr::from_str("MOVE").unwrap()
+        );
         let x: Result<Method, _> = FromStr::from_str("");
         if let Err(Error::Method) = x {
         } else {
@@ -253,13 +233,15 @@ mod tests {
     #[test]
     fn test_fmt() {
         assert_eq!("GET".to_owned(), format!("{}", Get));
-        assert_eq!("MOVE".to_owned(),
-                   format!("{}", Extension("MOVE".to_owned())));
+        assert_eq!(
+            "MOVE".to_owned(),
+            format!("{}", Extension("MOVE".to_owned()))
+        );
     }
 
     #[test]
     fn test_hashable() {
-        let mut counter: HashMap<Method,usize> = HashMap::new();
+        let mut counter: HashMap<Method, usize> = HashMap::new();
         counter.insert(Get, 1);
         assert_eq!(Some(&1), counter.get(&Get));
     }
@@ -274,12 +256,7 @@ mod tests {
 
     #[test]
     fn test_compat() {
-        let methods = vec![
-            "GET",
-            "POST",
-            "PUT",
-            "MOVE"
-        ];
+        let methods = vec!["GET", "POST", "PUT", "MOVE"];
         for method in methods {
             let orig_hyper_method = Method::from_str(method).unwrap();
             let orig_http_method = http::Method::try_from(method).unwrap();

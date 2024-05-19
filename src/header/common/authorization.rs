@@ -1,9 +1,9 @@
+use base64::{decode, encode};
+use header::{Header, RawLike};
 use std::any::Any;
 use std::fmt::{self, Display};
-use std::str::{FromStr, from_utf8};
 use std::ops::{Deref, DerefMut};
-use base64::{encode, decode};
-use header::{Header, RawLike};
+use std::str::{from_utf8, FromStr};
 
 /// `Authorization` header, defined in [RFC7235](https://tools.ietf.org/html/rfc7235#section-4.2)
 ///
@@ -76,14 +76,18 @@ impl<S: Scheme> DerefMut for Authorization<S> {
     }
 }
 
-impl<S: Scheme + Any> Header for Authorization<S> where <S as FromStr>::Err: 'static {
+impl<S: Scheme + Any> Header for Authorization<S>
+where
+    <S as FromStr>::Err: 'static,
+{
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Authorization";
+        static NAME: &str = "Authorization";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<Authorization<S>>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         if let Some(line) = raw.one() {
             let header = from_utf8(line)?;
@@ -91,7 +95,7 @@ impl<S: Scheme + Any> Header for Authorization<S> where <S as FromStr>::Err: 'st
                 if header.starts_with(scheme) && header.len() > scheme.len() + 1 {
                     match header[scheme.len() + 1..].parse::<S>().map(Authorization) {
                         Ok(h) => Ok(h),
-                        Err(_) => Err(::Error::Header)
+                        Err(_) => Err(::Error::Header),
                     }
                 } else {
                     Err(::Error::Header)
@@ -99,7 +103,7 @@ impl<S: Scheme + Any> Header for Authorization<S> where <S as FromStr>::Err: 'st
             } else {
                 match header.parse::<S>().map(Authorization) {
                     Ok(h) => Ok(h),
-                    Err(_) => Err(::Error::Header)
+                    Err(_) => Err(::Error::Header),
                 }
             }
         } else {
@@ -149,7 +153,7 @@ pub struct Basic {
     /// The password. `None` if the `:` delimiter character was not
     /// part of the parsed input. Note: A compliant client MUST
     /// always send a password (which may be the empty string).
-    pub password: Option<String>
+    pub password: Option<String>,
 }
 
 impl Scheme for Basic {
@@ -181,24 +185,17 @@ impl FromStr for Basic {
                     let parts = &mut text.split(':');
                     let user = match parts.next() {
                         Some(part) => part.to_owned(),
-                        None => return Err(::Error::Header)
+                        None => return Err(::Error::Header),
                     };
-                    let password = match parts.next() {
-                        Some(part) => Some(part.to_owned()),
-                        None => None
-                    };
+                    let password = parts.next().map(|part| part.to_owned());
                     Ok(Basic {
                         username: user,
-                        password: password
+                        password,
                     })
-                },
-                Err(_) => {
-                    Err(::Error::Header)
                 }
+                Err(_) => Err(::Error::Header),
             },
-            Err(_) => {
-                Err(::Error::Header)
-            }
+            Err(_) => Err(::Error::Header),
         }
     }
 }
@@ -207,7 +204,7 @@ impl FromStr for Basic {
 ///Token holder for Bearer Authentication, most often seen with oauth
 pub struct Bearer {
     ///Actual bearer token as a string
-    pub token: String
+    pub token: String,
 }
 
 impl Scheme for Bearer {
@@ -223,14 +220,36 @@ impl Scheme for Bearer {
 impl FromStr for Bearer {
     type Err = ::Error;
     fn from_str(s: &str) -> ::Result<Bearer> {
-        Ok(Bearer { token: s.to_owned()})
+        Ok(Bearer {
+            token: s.to_owned(),
+        })
+    }
+}
+
+bench_header!(raw, Authorization<String>, {
+    vec![b"foo bar baz".to_vec()]
+});
+bench_header!(basic, Authorization<Basic>, {
+    vec![b"Basic QWxhZGRpbjpuIHNlc2FtZQ==".to_vec()]
+});
+bench_header!(bearer, Authorization<Bearer>, {
+    vec![b"Bearer fpKL54jvWmEGVoRdCNjG".to_vec()]
+});
+
+impl<S> ::header::StandardHeader for Authorization<S>
+where
+    S: Scheme + Any,
+{
+    #[inline]
+    fn http_header_name() -> ::http::header::HeaderName {
+        ::http::header::AUTHORIZATION
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Authorization, Basic, Bearer};
     use super::super::super::{Header, Raw};
+    use super::{Authorization, Basic, Bearer};
 
     #[cfg(feature = "headers")]
     use super::super::super::Headers;
@@ -240,7 +259,10 @@ mod tests {
     fn test_raw_auth() {
         let mut headers = Headers::new();
         headers.set(Authorization("foo bar baz".to_owned()));
-        assert_eq!(headers.to_string(), "Authorization: foo bar baz\r\n".to_owned());
+        assert_eq!(
+            headers.to_string(),
+            "Authorization: foo bar baz\r\n".to_owned()
+        );
     }
 
     #[test]
@@ -254,19 +276,28 @@ mod tests {
     #[test]
     fn test_basic_auth() {
         let mut headers = Headers::new();
-        headers.set(Authorization(
-            Basic { username: "Aladdin".to_owned(), password: Some("open sesame".to_owned()) }));
+        headers.set(Authorization(Basic {
+            username: "Aladdin".to_owned(),
+            password: Some("open sesame".to_owned()),
+        }));
         assert_eq!(
             headers.to_string(),
-            "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==\r\n".to_owned());
+            "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==\r\n".to_owned()
+        );
     }
 
     #[cfg(feature = "headers")]
     #[test]
     fn test_basic_auth_no_password() {
         let mut headers = Headers::new();
-        headers.set(Authorization(Basic { username: "Aladdin".to_owned(), password: None }));
-        assert_eq!(headers.to_string(), "Authorization: Basic QWxhZGRpbjo=\r\n".to_owned());
+        headers.set(Authorization(Basic {
+            username: "Aladdin".to_owned(),
+            password: None,
+        }));
+        assert_eq!(
+            headers.to_string(),
+            "Authorization: Basic QWxhZGRpbjo=\r\n".to_owned()
+        );
     }
 
     #[test]
@@ -289,11 +320,13 @@ mod tests {
     #[test]
     fn test_bearer_auth() {
         let mut headers = Headers::new();
-        headers.set(Authorization(
-            Bearer { token: "fpKL54jvWmEGVoRdCNjG".to_owned() }));
+        headers.set(Authorization(Bearer {
+            token: "fpKL54jvWmEGVoRdCNjG".to_owned(),
+        }));
         assert_eq!(
             headers.to_string(),
-            "Authorization: Bearer fpKL54jvWmEGVoRdCNjG\r\n".to_owned());
+            "Authorization: Bearer fpKL54jvWmEGVoRdCNjG\r\n".to_owned()
+        );
     }
 
     #[test]
@@ -301,18 +334,5 @@ mod tests {
         let r: Raw = b"Bearer fpKL54jvWmEGVoRdCNjG".as_ref().into();
         let auth: Authorization<Bearer> = Header::parse_header(&r).unwrap();
         assert_eq!(auth.0.token, "fpKL54jvWmEGVoRdCNjG");
-    }
-}
-
-bench_header!(raw, Authorization<String>, { vec![b"foo bar baz".to_vec()] });
-bench_header!(basic, Authorization<Basic>, { vec![b"Basic QWxhZGRpbjpuIHNlc2FtZQ==".to_vec()] });
-bench_header!(bearer, Authorization<Bearer>, { vec![b"Bearer fpKL54jvWmEGVoRdCNjG".to_vec()] });
-
-impl<S> ::header::StandardHeader for Authorization<S>
-    where S: Scheme + Any
-{
-    #[inline]
-    fn http_header_name() -> ::http::header::HeaderName {
-        ::http::header::AUTHORIZATION
     }
 }

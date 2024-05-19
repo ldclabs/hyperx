@@ -140,17 +140,17 @@ pub struct Protocol {
 impl Protocol {
     /// Creates a new Protocol with the given name and version
     pub fn new(name: ProtocolName, version: Option<String>) -> Protocol {
-        Protocol { name: name, version: version }
+        Protocol { name, version }
     }
 }
 
 impl FromStr for Protocol {
-    type Err =();
+    type Err = ();
     fn from_str(s: &str) -> Result<Protocol, ()> {
         let mut parts = s.splitn(2, '/');
         Ok(Protocol::new(
             parts.next().unwrap().parse()?,
-            parts.next().map(|x| x.to_owned())
+            parts.next().map(|x| x.to_owned()),
         ))
     }
 }
@@ -165,6 +165,8 @@ impl Display for Protocol {
     }
 }
 
-bench_header!(bench, Upgrade, { vec![b"HTTP/2.0, RTA/x11, websocket".to_vec()] });
+bench_header!(bench, Upgrade, {
+    vec![b"HTTP/2.0, RTA/x11, websocket".to_vec()]
+});
 
 standard_header!(Upgrade, UPGRADE);

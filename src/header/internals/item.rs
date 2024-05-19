@@ -4,12 +4,12 @@ use std::fmt;
 use std::str::from_utf8;
 
 use super::cell::{OptCell, PtrMapCell};
-use header::{Header, Formatter, Multi, raw, Raw, RawLike};
+use header::{raw, Formatter, Header, Multi, Raw, RawLike};
 
 #[derive(Clone)]
 pub struct Item {
     raw: OptCell<Raw>,
-    typed: PtrMapCell<dyn Header + Send + Sync>
+    typed: PtrMapCell<dyn Header + Send + Sync>,
 }
 
 impl Item {
@@ -33,9 +33,7 @@ impl Item {
     pub fn raw_mut(&mut self) -> &mut Raw {
         self.raw();
         self.typed = PtrMapCell::new();
-        unsafe {
-            self.raw.get_mut()
-        }
+        unsafe { self.raw.get_mut() }
     }
 
     pub fn raw(&self) -> &Raw {
@@ -44,7 +42,8 @@ impl Item {
         }
 
         let mut raw = raw::new();
-        self.write_h1(&mut Formatter(Multi::Raw(&mut raw))).expect("fmt failed");
+        self.write_h1(&mut Formatter(Multi::Raw(&mut raw)))
+            .expect("fmt failed");
         self.raw.set(raw);
 
         self.raw.as_ref().unwrap()
@@ -54,32 +53,36 @@ impl Item {
         let tid = TypeId::of::<H>();
         match self.typed.get(tid) {
             Some(val) => Some(val),
-            None => {
-                parse::<H>(self.raw.as_ref().expect("item.raw must exist")).and_then(|typed| {
-                    unsafe { self.typed.insert(tid, typed); }
-                    self.typed.get(tid)
-                })
-            }
-        }.map(|typed| unsafe { typed.downcast_ref_unchecked() })
+            None => parse::<H>(self.raw.as_ref().expect("item.raw must exist")).and_then(|typed| {
+                unsafe {
+                    self.typed.insert(tid, typed);
+                }
+                self.typed.get(tid)
+            }),
+        }
+        .map(|typed| unsafe { typed.downcast_ref_unchecked() })
     }
 
     pub fn typed_mut<H: Header>(&mut self) -> Option<&mut H> {
         let tid = TypeId::of::<H>();
         if self.typed.get_mut(tid).is_none() {
-            parse::<H>(self.raw.as_ref().expect("item.raw must exist")).map(|typed| {
-                unsafe { self.typed.insert(tid, typed); }
+            parse::<H>(self.raw.as_ref().expect("item.raw must exist")).map(|typed| unsafe {
+                self.typed.insert(tid, typed);
             });
         }
         if self.raw.is_some() && self.typed.get_mut(tid).is_some() {
             self.raw = OptCell::new(None);
         }
-        self.typed.get_mut(tid).map(|typed| unsafe { typed.downcast_mut_unchecked() })
+        self.typed
+            .get_mut(tid)
+            .map(|typed| unsafe { typed.downcast_mut_unchecked() })
     }
 
     pub fn into_typed<H: Header>(self) -> Option<H> {
         let tid = TypeId::of::<H>();
         let Item { typed, raw } = self;
-        typed.into_value(tid)
+        typed
+            .into_value(tid)
             .or_else(|| raw.as_ref().and_then(parse::<H>))
             .map(|typed| unsafe { typed.downcast_unchecked() })
     }
@@ -91,14 +94,14 @@ impl Item {
                     match from_utf8(&part[..]) {
                         Ok(s) => {
                             f.fmt_line(&s)?;
-                        },
+                        }
                         Err(_) => {
                             return Err(fmt::Error);
                         }
                     }
                 }
                 Ok(())
-            },
+            }
             None => {
                 let typed = unsafe { self.typed.one() };
                 typed.fmt_header(f)
@@ -109,8 +112,10 @@ impl Item {
 
 #[inline]
 fn parse<H: Header>(raw: &Raw) -> Option<Box<dyn Header + Send + Sync>> {
-    H::parse_header(raw).map(|h| {
-        let h: Box<dyn Header + Send + Sync> = Box::new(h);
-        h
-    }).ok()
+    H::parse_header(raw)
+        .map(|h| {
+            let h: Box<dyn Header + Send + Sync> = Box::new(h);
+            h
+        })
+        .ok()
 }

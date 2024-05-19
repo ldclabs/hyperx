@@ -1,12 +1,12 @@
+use bytes::Bytes;
 use std::borrow::Cow;
 use std::fmt;
-use bytes::Bytes;
 
 /// Trait for raw bytes parsing access to header values (aka lines) for a single
 /// header name.
 pub trait RawLike<'a> {
     /// The associated type of `Iterator` over values.
-    type IntoIter: Iterator<Item=&'a [u8]> + 'a;
+    type IntoIter: Iterator<Item = &'a [u8]> + 'a;
 
     /// Return the number of values (lines) in the headers.
     fn len(&'a self) -> usize;
@@ -63,7 +63,7 @@ impl<'a> RawLike<'a> for Raw {
         match self.0 {
             Lines::Empty => 0,
             Lines::One(..) => 1,
-            Lines::Many(ref lines) => lines.len()
+            Lines::Many(ref lines) => lines.len(),
         }
     }
 
@@ -72,7 +72,7 @@ impl<'a> RawLike<'a> for Raw {
         match self.0 {
             Lines::One(ref line) => Some(line.as_ref()),
             Lines::Many(ref lines) if lines.len() == 1 => Some(lines[0].as_ref()),
-            _ => None
+            _ => None,
         }
     }
 
@@ -98,7 +98,7 @@ fn eq_many<A: AsRef<[u8]>, B: AsRef<[u8]>>(a: &[A], b: &[B]) -> bool {
     } else {
         for (a, b) in a.iter().zip(b.iter()) {
             if a.as_ref() != b.as_ref() {
-                return false
+                return false;
             }
         }
         true
@@ -109,7 +109,7 @@ fn eq<B: AsRef<[u8]>>(raw: &Raw, b: &[B]) -> bool {
     match raw.0 {
         Lines::Empty => b.is_empty(),
         Lines::One(ref line) => eq_many(&[line], b),
-        Lines::Many(ref lines) => eq_many(lines, b)
+        Lines::Many(ref lines) => eq_many(lines, b),
     }
 }
 
@@ -154,7 +154,7 @@ impl PartialEq<[u8]> for Raw {
         match self.0 {
             Lines::Empty => bytes.is_empty(),
             Lines::One(ref line) => line.as_ref() == bytes,
-            Lines::Many(..) => false
+            Lines::Many(..) => false,
         }
     }
 }
@@ -171,7 +171,7 @@ impl From<Vec<Vec<u8>>> for Raw {
         Raw(Lines::Many(
             val.into_iter()
                 .map(|vec| maybe_literal(vec.into()))
-                .collect()
+                .collect(),
         ))
     }
 }
@@ -229,7 +229,7 @@ impl fmt::Debug for Lines {
         match *self {
             Lines::Empty => f.pad("[]"),
             Lines::One(ref line) => fmt::Debug::fmt(&[line], f),
-            Lines::Many(ref lines) => fmt::Debug::fmt(lines, f)
+            Lines::Many(ref lines) => fmt::Debug::fmt(lines, f),
         }
     }
 }
@@ -240,12 +240,14 @@ impl ::std::ops::Index<usize> for Raw {
     fn index(&self, idx: usize) -> &[u8] {
         match self.0 {
             Lines::Empty => panic!("index of out of bounds: {}", idx),
-            Lines::One(ref line) => if idx == 0 {
-                line.as_ref()
-            } else {
-                panic!("index out of bounds: {}", idx)
-            },
-            Lines::Many(ref lines) => lines[idx].as_ref()
+            Lines::One(ref line) => {
+                if idx == 0 {
+                    line.as_ref()
+                } else {
+                    panic!("index out of bounds: {}", idx)
+                }
+            }
+            Lines::Many(ref lines) => lines[idx].as_ref(),
         }
     }
 }
@@ -305,9 +307,7 @@ pub struct RawLines<'a> {
 
 impl<'a> fmt::Debug for RawLines<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("RawLines")
-            .field(&self.inner)
-            .finish()
+        f.debug_tuple("RawLines").field(&self.inner).finish()
     }
 }
 

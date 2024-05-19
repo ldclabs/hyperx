@@ -1,7 +1,7 @@
+use header::parsing::{fmt_comma_delimited, from_comma_delimited};
+use header::{Header, RawLike};
 use std::fmt;
 use std::str::FromStr;
-use header::{Header, RawLike};
-use header::parsing::{from_comma_delimited, fmt_comma_delimited};
 
 /// `Prefer` header, defined in [RFC7240](http://tools.ietf.org/html/rfc7240)
 ///
@@ -59,12 +59,13 @@ __hyper__deref!(Prefer => Vec<Preference>);
 
 impl Header for Prefer {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Prefer";
+        static NAME: &str = "Prefer";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<Prefer>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         let preferences = from_comma_delimited(raw)?;
         if !preferences.is_empty() {
@@ -103,33 +104,40 @@ pub enum Preference {
 
     /// Extension preferences. Always has a value, if none is specified it is
     /// just "". A preference can also have a list of parameters.
-    Extension(String, String, Vec<(String, String)>)
+    Extension(String, String, Vec<(String, String)>),
 }
 
 impl fmt::Display for Preference {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::Preference::*;
-        fmt::Display::fmt(match *self {
-            RespondAsync => "respond-async",
-            ReturnRepresentation => "return=representation",
-            ReturnMinimal => "return=minimal",
-            HandlingStrict => "handling=strict",
-            HandlingLenient => "handling=lenient",
+        fmt::Display::fmt(
+            match *self {
+                RespondAsync => "respond-async",
+                ReturnRepresentation => "return=representation",
+                ReturnMinimal => "return=minimal",
+                HandlingStrict => "handling=strict",
+                HandlingLenient => "handling=lenient",
 
-            Wait(secs) => return write!(f, "wait={}", secs),
+                Wait(secs) => return write!(f, "wait={}", secs),
 
-            Extension(ref name, ref value, ref params) => {
-                write!(f, "{}", name)?;
-                if value != "" { write!(f, "={}", value)?; }
-                if !params.is_empty() {
-                    for &(ref name, ref value) in params {
-                        write!(f, "; {}", name)?;
-                        if value != "" { write!(f, "={}", value)?; }
+                Extension(ref name, ref value, ref params) => {
+                    write!(f, "{}", name)?;
+                    if !value.is_empty() {
+                        write!(f, "={}", value)?;
                     }
+                    if !params.is_empty() {
+                        for (name, value) in params {
+                            write!(f, "; {}", name)?;
+                            if !value.is_empty() {
+                                write!(f, "={}", value)?;
+                            }
+                        }
+                    }
+                    return Ok(());
                 }
-                return Ok(());
-            }
-        }, f)
+            },
+            f,
+        )
     }
 }
 
@@ -146,68 +154,138 @@ impl FromStr for Preference {
                 // function (used above) will always have at least one value.
                 //
                 // [1]: http://doc.rust-lang.org/std/primitive.str.html#method.splitn
-                _ => { unreachable!(); }
+                _ => {
+                    unreachable!();
+                }
             }
         });
         match params.nth(0) {
             Some(param) => {
-                let rest: Vec<(String, String)> = params.map(|(l, r)| (l.to_owned(), r.to_owned())).collect();
+                let rest: Vec<(String, String)> =
+                    params.map(|(l, r)| (l.to_owned(), r.to_owned())).collect();
                 match param {
-                    ("respond-async", "") => if rest.is_empty() { Ok(RespondAsync) } else { Err(None) },
-                    ("return", "representation") => if rest.is_empty() { Ok(ReturnRepresentation) } else { Err(None) },
-                    ("return", "minimal") => if rest.is_empty() { Ok(ReturnMinimal) } else { Err(None) },
-                    ("handling", "strict") => if rest.is_empty() { Ok(HandlingStrict) } else { Err(None) },
-                    ("handling", "lenient") => if rest.is_empty() { Ok(HandlingLenient) } else { Err(None) },
-                    ("wait", secs) => if rest.is_empty() { secs.parse().map(Wait).map_err(Some) } else { Err(None) },
-                    (left, right) => Ok(Extension(left.to_owned(), right.to_owned(), rest))
+                    ("respond-async", "") => {
+                        if rest.is_empty() {
+                            Ok(RespondAsync)
+                        } else {
+                            Err(None)
+                        }
+                    }
+                    ("return", "representation") => {
+                        if rest.is_empty() {
+                            Ok(ReturnRepresentation)
+                        } else {
+                            Err(None)
+                        }
+                    }
+                    ("return", "minimal") => {
+                        if rest.is_empty() {
+                            Ok(ReturnMinimal)
+                        } else {
+                            Err(None)
+                        }
+                    }
+                    ("handling", "strict") => {
+                        if rest.is_empty() {
+                            Ok(HandlingStrict)
+                        } else {
+                            Err(None)
+                        }
+                    }
+                    ("handling", "lenient") => {
+                        if rest.is_empty() {
+                            Ok(HandlingLenient)
+                        } else {
+                            Err(None)
+                        }
+                    }
+                    ("wait", secs) => {
+                        if rest.is_empty() {
+                            secs.parse().map(Wait).map_err(Some)
+                        } else {
+                            Err(None)
+                        }
+                    }
+                    (left, right) => Ok(Extension(left.to_owned(), right.to_owned(), rest)),
                 }
-            },
-            None => Err(None)
+            }
+            None => Err(None),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use header::{Header, Raw};
     use super::*;
+    use header::{Header, Raw};
 
     #[test]
     fn test_parse_multiple_headers() {
         let r: Raw = "respond-async, return=representation".into();
         let prefer = Header::parse_header(&r);
-        assert_eq!(prefer.ok(), Some(Prefer(vec![Preference::RespondAsync,
-                                           Preference::ReturnRepresentation])))
+        assert_eq!(
+            prefer.ok(),
+            Some(Prefer(vec![
+                Preference::RespondAsync,
+                Preference::ReturnRepresentation
+            ]))
+        )
     }
 
     #[test]
     fn test_parse_argument() {
         let r: Raw = "wait=100, handling=lenient, respond-async".into();
         let prefer = Header::parse_header(&r);
-        assert_eq!(prefer.ok(), Some(Prefer(vec![Preference::Wait(100),
-                                           Preference::HandlingLenient,
-                                           Preference::RespondAsync])))
+        assert_eq!(
+            prefer.ok(),
+            Some(Prefer(vec![
+                Preference::Wait(100),
+                Preference::HandlingLenient,
+                Preference::RespondAsync
+            ]))
+        )
     }
 
     #[test]
     fn test_parse_quote_form() {
         let r: Raw = "wait=\"200\", handling=\"strict\"".into();
         let prefer = Header::parse_header(&r);
-        assert_eq!(prefer.ok(), Some(Prefer(vec![Preference::Wait(200),
-                                           Preference::HandlingStrict])))
+        assert_eq!(
+            prefer.ok(),
+            Some(Prefer(vec![
+                Preference::Wait(200),
+                Preference::HandlingStrict
+            ]))
+        )
     }
 
     #[test]
     fn test_parse_extension() {
         let r: Raw = "foo, bar=baz, baz; foo; bar=baz, bux=\"\"; \
-                      foo=\"\", buz=\"some parameter\"".into();
+                      foo=\"\", buz=\"some parameter\""
+            .into();
         let prefer = Header::parse_header(&r);
-        assert_eq!(prefer.ok(), Some(Prefer(vec![
-            Preference::Extension("foo".to_owned(), "".to_owned(), vec![]),
-            Preference::Extension("bar".to_owned(), "baz".to_owned(), vec![]),
-            Preference::Extension("baz".to_owned(), "".to_owned(), vec![("foo".to_owned(), "".to_owned()), ("bar".to_owned(), "baz".to_owned())]),
-            Preference::Extension("bux".to_owned(), "".to_owned(), vec![("foo".to_owned(), "".to_owned())]),
-            Preference::Extension("buz".to_owned(), "some parameter".to_owned(), vec![])])))
+        assert_eq!(
+            prefer.ok(),
+            Some(Prefer(vec![
+                Preference::Extension("foo".to_owned(), "".to_owned(), vec![]),
+                Preference::Extension("bar".to_owned(), "baz".to_owned(), vec![]),
+                Preference::Extension(
+                    "baz".to_owned(),
+                    "".to_owned(),
+                    vec![
+                        ("foo".to_owned(), "".to_owned()),
+                        ("bar".to_owned(), "baz".to_owned())
+                    ]
+                ),
+                Preference::Extension(
+                    "bux".to_owned(),
+                    "".to_owned(),
+                    vec![("foo".to_owned(), "".to_owned())]
+                ),
+                Preference::Extension("buz".to_owned(), "some parameter".to_owned(), vec![])
+            ]))
+        )
     }
 
     #[test]
@@ -218,5 +296,9 @@ mod tests {
     }
 }
 
-bench_header!(normal,
-    Prefer, { vec![b"respond-async, return=representation".to_vec(), b"wait=100".to_vec()] });
+bench_header!(normal, Prefer, {
+    vec![
+        b"respond-async, return=representation".to_vec(),
+        b"wait=100".to_vec(),
+    ]
+});

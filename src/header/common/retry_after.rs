@@ -35,11 +35,10 @@
 // Version 2.0, January 2004
 // http://www.apache.org/licenses/
 
+use header::shared::HttpDate;
+use header::{Header, RawLike};
 use std::fmt;
 use std::time::Duration;
-
-use header::{Header, RawLike};
-use header::shared::HttpDate;
 
 /// The `Retry-After` header.
 ///
@@ -88,21 +87,22 @@ pub enum RetryAfter {
 
 impl Header for RetryAfter {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Retry-After";
+        static NAME: &str = "Retry-After";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<RetryAfter>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
-        if let Some(ref line) = raw.one() {
+        if let Some(line) = raw.one() {
             let utf8_str = match ::std::str::from_utf8(line) {
                 Ok(utf8_str) => utf8_str,
                 Err(_) => return Err(::Error::Header),
             };
 
             if let Ok(datetime) = utf8_str.parse::<HttpDate>() {
-                return Ok(RetryAfter::DateTime(datetime))
+                return Ok(RetryAfter::DateTime(datetime));
             }
 
             if let Ok(seconds) = utf8_str.parse::<u64>() {
@@ -125,19 +125,17 @@ impl fmt::Display for RetryAfter {
         match *self {
             RetryAfter::Delay(ref duration) => {
                 write!(f, "{}", duration.as_secs())
-            },
-            RetryAfter::DateTime(ref datetime) => {
-                fmt::Display::fmt(datetime, f)
             }
+            RetryAfter::DateTime(ref datetime) => fmt::Display::fmt(datetime, f),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-    use header::{Header, Raw};
     use header::shared::HttpDate;
+    use header::{Header, Raw};
+    use std::time::Duration;
 
     use super::RetryAfter;
 
@@ -162,7 +160,7 @@ mod tests {
                 let retry_after = RetryAfter::parse_header(&r).expect("parse_header ok");
                 assert_eq!(RetryAfter::DateTime(dt), retry_after);
             }
-        }
+        };
     }
 
     test_retry_after_datetime!(header_parse_rfc1123, b"Sun, 06 Nov 1994 08:49:37 GMT");

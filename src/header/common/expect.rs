@@ -1,9 +1,7 @@
+use header::{Header, RawLike};
 use std::fmt;
 use std::str;
-
 use unicase;
-
-use header::{Header, RawLike};
 
 /// The `Expect` header.
 ///
@@ -24,17 +22,18 @@ use header::{Header, RawLike};
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Expect {
     /// The value `100-continue`.
-    Continue
+    Continue,
 }
 
 impl Header for Expect {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Expect";
+        static NAME: &str = "Expect";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<Expect>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         if let Some(line) = raw.one() {
             let text = unsafe {

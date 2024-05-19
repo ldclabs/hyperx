@@ -5,14 +5,7 @@ use std::fmt;
 use std::str::Utf8Error;
 use std::string::FromUtf8Error;
 
-use self::Error::{
-    Method,
-    Version,
-    Header,
-    Status,
-    TooLarge,
-    Utf8
-};
+use self::Error::{Header, Method, Status, TooLarge, Utf8, Version};
 
 /// Result type often returned from methods that can have hyper `Error`s.
 pub type Result<T> = ::std::result::Result<T, Error>;
@@ -34,7 +27,7 @@ pub enum Error {
     Utf8(Utf8Error),
 
     #[doc(hidden)]
-    __Nonexhaustive(Void)
+    __Nonexhaustive(Void),
 }
 
 #[doc(hidden)]

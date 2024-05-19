@@ -1,21 +1,22 @@
 //! Utility functions for Header implementations.
 
+use header::shared::Charset;
+use header::RawLike;
 use language_tags::LanguageTag;
+use percent_encoding;
+use std::fmt::{self, Display};
 use std::str;
 use std::str::FromStr;
-use std::fmt::{self, Display};
-use percent_encoding;
-
-use header::RawLike;
-use header::shared::Charset;
 
 /// Reads a single raw string when parsing a header.
 pub fn from_one_raw_str<'a, R, T>(raw: &'a R) -> ::Result<T>
-where R: RawLike<'a>, T: str::FromStr
+where
+    R: RawLike<'a>,
+    T: str::FromStr,
 {
     if let Some(line) = raw.one() {
         if !line.is_empty() {
-            return from_raw_str(line)
+            return from_raw_str(line);
         }
     }
     Err(::Error::Header)
@@ -30,17 +31,21 @@ pub fn from_raw_str<T: str::FromStr>(raw: &[u8]) -> ::Result<T> {
 /// Reads a comma-delimited raw header into a Vec.
 #[inline]
 pub fn from_comma_delimited<'a, R, T>(raw: &'a R) -> ::Result<Vec<T>>
-where R: RawLike<'a>, T: str::FromStr
+where
+    R: RawLike<'a>,
+    T: str::FromStr,
 {
     let mut result = Vec::new();
     for s in raw.iter() {
-        let s = str::from_utf8(s.as_ref())?;
-        result.extend(s.split(',')
-                      .filter_map(|x| match x.trim() {
-                          "" => None,
-                          y => Some(y)
-                      })
-                      .filter_map(|x| x.trim().parse().ok()))
+        let s = str::from_utf8(s)?;
+        result.extend(
+            s.split(',')
+                .filter_map(|x| match x.trim() {
+                    "" => None,
+                    y => Some(y),
+                })
+                .filter_map(|x| x.trim().parse().ok()),
+        )
     }
     Ok(result)
 }
@@ -106,9 +111,8 @@ pub struct ExtendedValue {
 ///               ; token except ( "*" / "'" / "%" )
 /// ```
 pub fn parse_extended_value(val: &str) -> ::Result<ExtendedValue> {
-
     // Break into three pieces separated by the single-quote character
-    let mut parts = val.splitn(3,'\'');
+    let mut parts = val.splitn(3, '\'');
 
     // Interpret the first piece as a Charset
     let charset: Charset = match parts.next() {
@@ -123,7 +127,7 @@ pub fn parse_extended_value(val: &str) -> ::Result<ExtendedValue> {
         Some(s) => match s.parse() {
             Ok(lt) => Some(lt),
             Err(_) => return Err(::Error::Header),
-        }
+        },
     };
 
     // Interpret the third piece as a sequence of value characters
@@ -133,19 +137,18 @@ pub fn parse_extended_value(val: &str) -> ::Result<ExtendedValue> {
     };
 
     Ok(ExtendedValue {
-        charset: charset,
+        charset,
         language_tag: lang,
-        value: value,
+        value,
     })
 }
 
 impl Display for ExtendedValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let encoded_value =
-            percent_encoding::percent_encode(
-                &self.value[..],
-                self::percent_encoding_http::HTTP_VALUE
-            );
+        let encoded_value = percent_encoding::percent_encode(
+            &self.value[..],
+            self::percent_encoding_http::HTTP_VALUE,
+        );
         if let Some(ref lang) = self.language_tag {
             write!(f, "{}'{}'{}", self.charset, lang, encoded_value)
         } else {
@@ -159,10 +162,7 @@ impl Display for ExtendedValue {
 ///
 /// [url]: https://tools.ietf.org/html/rfc5987#section-3.2
 pub fn http_percent_encode(f: &mut fmt::Formatter, bytes: &[u8]) -> fmt::Result {
-    let encoded = percent_encoding::percent_encode(
-        bytes,
-        self::percent_encoding_http::HTTP_VALUE
-    );
+    let encoded = percent_encoding::percent_encode(bytes, self::percent_encoding_http::HTTP_VALUE);
     fmt::Display::fmt(&encoded, f)
 }
 
@@ -172,16 +172,32 @@ mod percent_encoding_http {
     // This encode set is used for HTTP header values and is defined at
     // https://tools.ietf.org/html/rfc5987#section-3.2
     pub const HTTP_VALUE: &AsciiSet = &CONTROLS
-        .add(b' ') .add(b'"') .add(b'%') .add(b'\'') .add(b'(')  .add(b')')
-        .add(b'*') .add(b',') .add(b'/') .add(b':')  .add(b';')  .add(b'<')
-        .add(b'-') .add(b'>') .add(b'?') .add(b'[')  .add(b'\\') .add(b']')
-        .add(b'{') .add(b'}');
+        .add(b' ')
+        .add(b'"')
+        .add(b'%')
+        .add(b'\'')
+        .add(b'(')
+        .add(b')')
+        .add(b'*')
+        .add(b',')
+        .add(b'/')
+        .add(b':')
+        .add(b';')
+        .add(b'<')
+        .add(b'-')
+        .add(b'>')
+        .add(b'?')
+        .add(b'[')
+        .add(b'\\')
+        .add(b']')
+        .add(b'{')
+        .add(b'}');
 }
 
 #[cfg(test)]
 mod tests {
+    use super::{parse_extended_value, ExtendedValue};
     use header::shared::Charset;
-    use super::{ExtendedValue, parse_extended_value};
     use language_tags::LanguageTag;
 
     #[test]
@@ -195,7 +211,10 @@ mod tests {
         assert_eq!(Charset::Iso_8859_1, extended_value.charset);
         assert!(extended_value.language_tag.is_some());
         assert_eq!(expected_language_tag, extended_value.language_tag.unwrap());
-        assert_eq!(vec![163, b' ', b'r', b'a', b't', b'e', b's'], extended_value.value);
+        assert_eq!(
+            vec![163, b' ', b'r', b'a', b't', b'e', b's'],
+            extended_value.value
+        );
     }
 
     #[test]
@@ -208,7 +227,13 @@ mod tests {
         let extended_value = result.unwrap();
         assert_eq!(Charset::Ext("UTF-8".to_string()), extended_value.charset);
         assert!(extended_value.language_tag.is_none());
-        assert_eq!(vec![194, 163, b' ', b'a', b'n', b'd', b' ', 226, 130, 172, b' ', b'r', b'a', b't', b'e', b's'], extended_value.value);
+        assert_eq!(
+            vec![
+                194, 163, b' ', b'a', b'n', b'd', b' ', 226, 130, 172, b' ', b'r', b'a', b't',
+                b'e', b's'
+            ],
+            extended_value.value
+        );
     }
 
     #[test]
@@ -245,10 +270,14 @@ mod tests {
         let extended_value = ExtendedValue {
             charset: Charset::Ext("UTF-8".to_string()),
             language_tag: None,
-            value: vec![194, 163, b' ', b'a', b'n', b'd', b' ', 226, 130, 172, b' ', b'r', b'a',
-                        b't', b'e', b's'],
+            value: vec![
+                194, 163, b' ', b'a', b'n', b'd', b' ', 226, 130, 172, b' ', b'r', b'a', b't',
+                b'e', b's',
+            ],
         };
-        assert_eq!("UTF-8''%C2%A3%20and%20%E2%82%AC%20rates",
-                   format!("{}", extended_value));
+        assert_eq!(
+            "UTF-8''%C2%A3%20and%20%E2%82%AC%20rates",
+            format!("{}", extended_value)
+        );
     }
 }

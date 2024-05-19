@@ -1,8 +1,8 @@
-use header::{Header, RawLike, Host};
+use header::parsing::from_one_raw_str;
+use header::{Header, Host, RawLike};
 use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
-use header::parsing::from_one_raw_str;
 
 /// The `Origin` header.
 ///
@@ -42,7 +42,7 @@ pub struct Origin(OriginOrNull);
 enum OriginOrNull {
     Origin {
         /// The scheme, such as http or https
-        scheme: Cow<'static,str>,
+        scheme: Cow<'static, str>,
         /// The host, such as Host{hostname: "hyper.rs".to_owned(), port: None}
         host: Host,
     },
@@ -51,7 +51,11 @@ enum OriginOrNull {
 
 impl Origin {
     /// Creates a new `Origin` header.
-    pub fn new<S: Into<Cow<'static,str>>, H: Into<Cow<'static,str>>>(scheme: S, hostname: H, port: Option<u16>) -> Origin{
+    pub fn new<S: Into<Cow<'static, str>>, H: Into<Cow<'static, str>>>(
+        scheme: S,
+        hostname: H,
+        port: Option<u16>,
+    ) -> Origin {
         Origin(OriginOrNull::Origin {
             scheme: scheme.into(),
             host: Host::new(hostname, port),
@@ -80,7 +84,7 @@ impl Origin {
     /// ```
     pub fn scheme(&self) -> Option<&str> {
         match self {
-            &Origin(OriginOrNull::Origin { ref scheme, .. }) => Some(&scheme),
+            &Origin(OriginOrNull::Origin { ref scheme, .. }) => Some(scheme),
             _ => None,
         }
     }
@@ -94,7 +98,7 @@ impl Origin {
     /// ```
     pub fn host(&self) -> Option<&Host> {
         match self {
-            &Origin(OriginOrNull::Origin { ref host, .. }) => Some(&host),
+            &Origin(OriginOrNull::Origin { ref host, .. }) => Some(host),
             _ => None,
         }
     }
@@ -102,12 +106,13 @@ impl Origin {
 
 impl Header for Origin {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Origin";
+        static NAME: &str = "Origin";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<Origin>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         from_one_raw_str(raw)
     }
@@ -117,8 +122,8 @@ impl Header for Origin {
     }
 }
 
-static HTTP : &'static str = "http";
-static HTTPS : &'static str = "https";
+static HTTP: &str = "http";
+static HTTPS: &str = "https";
 
 impl FromStr for Origin {
     type Err = ::Error;
@@ -126,31 +131,31 @@ impl FromStr for Origin {
     fn from_str(s: &str) -> ::Result<Origin> {
         let idx = match s.find("://") {
             Some(idx) => idx,
-            None => return Err(::Error::Header)
+            None => return Err(::Error::Header),
         };
         // idx + 3 because that's how long "://" is
         let (scheme, etc) = (&s[..idx], &s[idx + 3..]);
         let host = Host::from_str(etc)?;
         let scheme = match scheme {
-            "http"  => Cow::Borrowed(HTTP),
+            "http" => Cow::Borrowed(HTTP),
             "https" => Cow::Borrowed(HTTPS),
-            s       => Cow::Owned(s.to_owned())
+            s => Cow::Owned(s.to_owned()),
         };
 
-        Ok(Origin(OriginOrNull::Origin {
-            scheme: scheme,
-            host: host
-        }))
+        Ok(Origin(OriginOrNull::Origin { scheme, host }))
     }
 }
 
 impl fmt::Display for Origin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.0 {
-            OriginOrNull::Origin { ref scheme, ref host } => write!(f, "{}://{}", scheme, host),
+            OriginOrNull::Origin {
+                ref scheme,
+                ref host,
+            } => write!(f, "{}://{}", scheme, host),
             // Serialized as "null" per ASCII serialization of an origin
             // https://html.spec.whatwg.org/multipage/browsers.html#ascii-serialisation-of-an-origin
-            OriginOrNull::Null => f.write_str("null")
+            OriginOrNull::Null => f.write_str("null"),
         }
     }
 }
@@ -161,24 +166,26 @@ mod tests {
     use header::{Header, Raw};
     use std::borrow::Cow;
 
-    macro_rules! assert_borrowed{
+    macro_rules! assert_borrowed {
         ($expr : expr) => {
             match $expr {
-                Cow::Owned(ref v) => panic!("assertion failed: `{}` owns {:?}", stringify!($expr), v),
+                Cow::Owned(ref v) => {
+                    panic!("assertion failed: `{}` owns {:?}", stringify!($expr), v)
+                }
                 _ => {}
             }
-        }
+        };
     }
 
     #[test]
     fn test_origin() {
         let r: Raw = vec![b"http://foo.com".to_vec()].into();
-        let origin : Origin = Header::parse_header(&r).unwrap();
+        let origin: Origin = Header::parse_header(&r).unwrap();
         assert_eq!(&origin, &Origin::new("http", "foo.com", None));
         assert_borrowed!(origin.scheme().unwrap().into());
 
         let r: Raw = vec![b"https://foo.com:443".to_vec()].into();
-        let origin : Origin = Header::parse_header(&r).unwrap();
+        let origin: Origin = Header::parse_header(&r).unwrap();
         assert_eq!(&origin, &Origin::new("https", "foo.com", Some(443)));
         assert_borrowed!(origin.scheme().unwrap().into());
     }

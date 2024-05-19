@@ -1,8 +1,7 @@
+use httpdate::HttpDate as InnerDate;
 use std::fmt::{self, Display};
 use std::str::FromStr;
 use std::time::SystemTime;
-
-use httpdate::HttpDate as InnerDate;
 
 /// A timestamp with HTTP formatting and parsing
 //   Prior to 1995, there were three different formats commonly used by
@@ -59,7 +58,7 @@ impl From<HttpDate> for SystemTime {
 
 #[cfg(test)]
 mod tests {
-    use std::time::{SystemTime, Duration};
+    use std::time::{Duration, SystemTime};
 
     use super::HttpDate;
 
@@ -67,9 +66,8 @@ mod tests {
         ($function: ident, $date: expr) => {
             #[test]
             fn $function() {
-                let nov_07 = HttpDate((
-                    SystemTime::UNIX_EPOCH + Duration::new(784198117, 0)
-                ).into());
+                let nov_07 =
+                    HttpDate((SystemTime::UNIX_EPOCH + Duration::new(784198117, 0)).into());
 
                 assert_eq!($date.parse::<HttpDate>().unwrap(), nov_07);
             }

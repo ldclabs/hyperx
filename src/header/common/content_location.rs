@@ -42,9 +42,9 @@ header! {
     (ContentLocation, "Content-Location") => [String]
 
     test_content_location {
-        test_header!(partial_query, vec![b"/hypertext/Overview.html?q=tim"]);
+        test_header!(partial_query, [b"/hypertext/Overview.html?q=tim"]);
 
-        test_header!(absolute, vec![b"http://www.example.org/hypertext/Overview.html"]);
+        test_header!(absolute, [b"http://www.example.org/hypertext/Overview.html"]);
     }
 }
 

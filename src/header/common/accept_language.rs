@@ -1,5 +1,5 @@
-use language_tags::LanguageTag;
 use header::QualityItem;
+use language_tags::LanguageTag;
 
 header! {
     /// `Accept-Language` header, defined in
@@ -56,7 +56,7 @@ header! {
 
     test_accept_language {
         // From the RFC
-        test_header!(test1, vec![b"da, en-gb;q=0.8, en;q=0.7"]);
+        test_header!(test1, [b"da, en-gb;q=0.8, en;q=0.7"]);
         // Own test
         test_header!(
             test2, vec![b"en-US, en; q=0.5, fr"],
@@ -68,7 +68,8 @@ header! {
     }
 }
 
-bench_header!(bench, AcceptLanguage,
-              { vec![b"en-us;q=1.0, en;q=0.5, fr".to_vec()] });
+bench_header!(bench, AcceptLanguage, {
+    vec![b"en-us;q=1.0, en;q=0.5, fr".to_vec()]
+});
 
 standard_header!(AcceptLanguage, ACCEPT_LANGUAGE);

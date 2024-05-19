@@ -48,7 +48,7 @@ header! {
     (AccessControlAllowMethods, "Access-Control-Allow-Methods") => (Method)*
 
     test_access_control_allow_methods {
-        test_header!(test1, vec![b"PUT, DELETE, XMODIFY"]);
+        test_header!(test1, [b"PUT, DELETE, XMODIFY"]);
     }
 }
 

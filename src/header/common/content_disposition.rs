@@ -6,13 +6,12 @@
 // Browser conformance tests at: http://greenbytes.de/tech/tc2231/
 // IANA assignment: http://www.iana.org/assignments/cont-disp/cont-disp.xhtml
 
+use header::parsing::{http_percent_encode, parse_extended_value};
+use header::shared::Charset;
+use header::{parsing, Header, RawLike};
 use language_tags::LanguageTag;
 use std::fmt;
 use unicase;
-
-use header::{Header, RawLike, parsing};
-use header::parsing::{parse_extended_value, http_percent_encode};
-use header::shared::Charset;
 
 /// The implied disposition of the content of the HTTP body.
 #[derive(Clone, Debug, PartialEq)]
@@ -23,7 +22,7 @@ pub enum DispositionType {
     /// rather than process it normally (as per its media type).
     Attachment,
     /// Extension type.  Should be handled by recipients the same way as Attachment
-    Ext(String)
+    Ext(String),
 }
 
 /// A parameter to the disposition type.
@@ -34,7 +33,7 @@ pub enum DispositionParam {
     Filename(Charset, Option<LanguageTag>, Vec<u8>),
     /// Extension type consisting of token and value.  Recipients should ignore unrecognized
     /// parameters.
-    Ext(String, String)
+    Ext(String, String),
 }
 
 /// A `Content-Disposition` header, (re)defined in [RFC6266](https://tools.ietf.org/html/rfc6266).
@@ -92,12 +91,13 @@ pub struct ContentDisposition {
 
 impl Header for ContentDisposition {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Content-Disposition";
+        static NAME: &str = "Content-Disposition";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<ContentDisposition>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         parsing::from_one_raw_str(raw).and_then(|s: String| {
             let mut sections = s.split(';');
@@ -107,9 +107,9 @@ impl Header for ContentDisposition {
             };
 
             let mut cd = ContentDisposition {
-                disposition: if unicase::eq_ascii(&*disposition, "inline") {
+                disposition: if unicase::eq_ascii(disposition, "inline") {
                     DispositionType::Inline
-                } else if unicase::eq_ascii(&*disposition, "attachment") {
+                } else if unicase::eq_ascii(disposition, "attachment") {
                     DispositionType::Attachment
                 } else {
                     DispositionType::Ext(disposition.to_owned())
@@ -132,18 +132,22 @@ impl Header for ContentDisposition {
                     return Err(::Error::Header);
                 };
 
-                cd.parameters.push(
-                    if unicase::eq_ascii(&*key, "filename") {
-                        DispositionParam::Filename(
-                            Charset::Ext("UTF-8".to_owned()), None,
-                            val.trim_matches('"').as_bytes().to_owned())
-                    } else if unicase::eq_ascii(&*key, "filename*") {
-                        let extended_value = parse_extended_value(val)?;
-                        DispositionParam::Filename(extended_value.charset, extended_value.language_tag, extended_value.value)
-                    } else {
-                        DispositionParam::Ext(key.to_owned(), val.trim_matches('"').to_owned())
-                    }
-                );
+                cd.parameters.push(if unicase::eq_ascii(key, "filename") {
+                    DispositionParam::Filename(
+                        Charset::Ext("UTF-8".to_owned()),
+                        None,
+                        val.trim_matches('"').as_bytes().to_owned(),
+                    )
+                } else if unicase::eq_ascii(key, "filename*") {
+                    let extended_value = parse_extended_value(val)?;
+                    DispositionParam::Filename(
+                        extended_value.charset,
+                        extended_value.language_tag,
+                        extended_value.value,
+                    )
+                } else {
+                    DispositionParam::Ext(key.to_owned(), val.trim_matches('"').to_owned())
+                });
             }
 
             Ok(cd)
@@ -175,11 +179,14 @@ impl fmt::Display for ContentDisposition {
                         }
                     }
                     if use_simple_format {
-                        write!(f, "; filename=\"{}\"",
-                               match String::from_utf8(bytes.clone()) {
-                                   Ok(s) => s,
-                                   Err(_) => return Err(fmt::Error),
-                               })?;
+                        write!(
+                            f,
+                            "; filename=\"{}\"",
+                            match String::from_utf8(bytes.clone()) {
+                                Ok(s) => s,
+                                Err(_) => return Err(fmt::Error),
+                            }
+                        )?;
                     } else {
                         write!(f, "; filename*={}'", charset)?;
                         if let Some(ref lang) = *opt_lang {
@@ -188,7 +195,7 @@ impl fmt::Display for ContentDisposition {
                         write!(f, "'")?;
                         http_percent_encode(f, bytes)?;
                     }
-                },
+                }
                 DispositionParam::Ext(ref k, ref v) => write!(f, "; {}=\"{}\"", k, v)?,
             }
         }
@@ -198,9 +205,9 @@ impl fmt::Display for ContentDisposition {
 
 #[cfg(test)]
 mod tests {
-    use super::{ContentDisposition,DispositionType,DispositionParam};
-    use ::header::{Header, Raw};
-    use ::header::shared::Charset;
+    use super::{ContentDisposition, DispositionParam, DispositionType};
+    use header::shared::Charset;
+    use header::{Header, Raw};
 
     #[test]
     fn test_parse_header() {
@@ -217,7 +224,9 @@ mod tests {
                 DispositionParam::Filename(
                     Charset::Ext("UTF-8".to_owned()),
                     None,
-                    "sample.png".bytes().collect()) ]
+                    "sample.png".bytes().collect(),
+                ),
+            ],
         };
         assert_eq!(a, b);
 
@@ -225,11 +234,11 @@ mod tests {
         let a: ContentDisposition = ContentDisposition::parse_header(&a).unwrap();
         let b = ContentDisposition {
             disposition: DispositionType::Attachment,
-            parameters: vec![
-                DispositionParam::Filename(
-                    Charset::Ext("UTF-8".to_owned()),
-                    None,
-                    "image.jpg".bytes().collect()) ]
+            parameters: vec![DispositionParam::Filename(
+                Charset::Ext("UTF-8".to_owned()),
+                None,
+                "image.jpg".bytes().collect(),
+            )],
         };
         assert_eq!(a, b);
 
@@ -237,12 +246,14 @@ mod tests {
         let a: ContentDisposition = ContentDisposition::parse_header(&a).unwrap();
         let b = ContentDisposition {
             disposition: DispositionType::Attachment,
-            parameters: vec![
-                DispositionParam::Filename(
-                    Charset::Ext("UTF-8".to_owned()),
-                    None,
-                    vec![0xc2, 0xa3, 0x20, b'a', b'n', b'd', 0x20,
-                         0xe2, 0x82, 0xac, 0x20, b'r', b'a', b't', b'e', b's']) ]
+            parameters: vec![DispositionParam::Filename(
+                Charset::Ext("UTF-8".to_owned()),
+                None,
+                vec![
+                    0xc2, 0xa3, 0x20, b'a', b'n', b'd', 0x20, 0xe2, 0x82, 0xac, 0x20, b'r', b'a',
+                    b't', b'e', b's',
+                ],
+            )],
         };
         assert_eq!(a, b);
     }
@@ -252,18 +263,24 @@ mod tests {
         let as_string = "attachment; filename*=UTF-8'en'%C2%A3%20and%20%E2%82%AC%20rates";
         let a: Raw = as_string.into();
         let a: ContentDisposition = ContentDisposition::parse_header(&a).unwrap();
-        let display_rendered = format!("{}",a);
+        let display_rendered = format!("{}", a);
         assert_eq!(as_string, display_rendered);
 
         let a: Raw = "attachment; filename*=UTF-8''black%20and%20white.csv".into();
         let a: ContentDisposition = ContentDisposition::parse_header(&a).unwrap();
-        let display_rendered = format!("{}",a);
-        assert_eq!("attachment; filename=\"black and white.csv\"".to_owned(), display_rendered);
+        let display_rendered = format!("{}", a);
+        assert_eq!(
+            "attachment; filename=\"black and white.csv\"".to_owned(),
+            display_rendered
+        );
 
         let a: Raw = "attachment; filename=colourful.csv".into();
         let a: ContentDisposition = ContentDisposition::parse_header(&a).unwrap();
-        let display_rendered = format!("{}",a);
-        assert_eq!("attachment; filename=\"colourful.csv\"".to_owned(), display_rendered);
+        let display_rendered = format!("{}", a);
+        assert_eq!(
+            "attachment; filename=\"colourful.csv\"".to_owned(),
+            display_rendered
+        );
     }
 }
 

@@ -1,9 +1,8 @@
+use header::internals::VecMap;
+use header::{Header, RawLike};
 use std::borrow::Cow;
 use std::fmt;
 use std::str::from_utf8;
-
-use header::{Header, RawLike};
-use header::internals::VecMap;
 
 /// `Cookie` header, defined in [RFC6265](http://tools.ietf.org/html/rfc6265#section-5.4)
 ///
@@ -37,6 +36,12 @@ use header::internals::VecMap;
 #[derive(Clone)]
 pub struct Cookie(VecMap<Cow<'static, str>, Cow<'static, str>>);
 
+impl Default for Cookie {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Cookie {
     /// Creates a new `Cookie` header.
     pub fn new() -> Cookie {
@@ -50,8 +55,9 @@ impl Cookie {
     /// This will remove all other instances with the same name,
     /// and insert the new value.
     pub fn set<K, V>(&mut self, key: K, value: V)
-        where K: Into<Cow<'static, str>>,
-              V: Into<Cow<'static, str>>
+    where
+        K: Into<Cow<'static, str>>,
+        V: Into<Cow<'static, str>>,
     {
         let key = key.into();
         let value = value.into();
@@ -73,8 +79,9 @@ impl Cookie {
     /// cookie.append("foo", "quux");
     /// assert_eq!(cookie.to_string(), "foo=bar; foo=quux");
     pub fn append<K, V>(&mut self, key: K, value: V)
-        where K: Into<Cow<'static, str>>,
-              V: Into<Cow<'static, str>>
+    where
+        K: Into<Cow<'static, str>>,
+        V: Into<Cow<'static, str>>,
     {
         self.0.append(key.into(), value.into());
     }
@@ -116,16 +123,17 @@ impl Cookie {
 
 impl Header for Cookie {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Cookie";
+        static NAME: &str = "Cookie";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<Cookie>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         let mut vec_map = VecMap::with_capacity(raw.len());
         for cookies_raw in raw.iter() {
-            let cookies_str = from_utf8(&cookies_raw[..])?;
+            let cookies_str = from_utf8(cookies_raw)?;
             for cookie_str in cookies_str.split(';') {
                 let mut key_val = cookie_str.splitn(2, '=');
                 let key_val = (key_val.next(), key_val.next());
@@ -150,7 +158,7 @@ impl Header for Cookie {
 impl PartialEq for Cookie {
     fn eq(&self, other: &Cookie) -> bool {
         if self.0.len() == other.0.len() {
-            for &(ref k, ref v) in self.0.iter() {
+            for (k, v) in self.0.iter() {
                 if other.get(k) != Some(v) {
                     return false;
                 }
@@ -165,7 +173,7 @@ impl PartialEq for Cookie {
 impl fmt::Debug for Cookie {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_map()
-            .entries(self.0.iter().map(|&(ref k, ref v)| (k, v)))
+            .entries(self.0.iter().map(|(k, v)| (k, v)))
             .finish()
     }
 }
@@ -173,10 +181,10 @@ impl fmt::Debug for Cookie {
 impl fmt::Display for Cookie {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut iter = self.0.iter();
-        if let Some(&(ref key, ref val)) = iter.next() {
+        if let Some((key, val)) = iter.next() {
             write!(f, "{}={}", key, val)?;
         }
-        for &(ref key, ref val) in iter {
+        for (key, val) in iter {
             write!(f, "; {}={}", key, val)?;
         }
         Ok(())
@@ -197,8 +205,8 @@ impl<'a> Iterator for CookieIter<'a> {
 
 #[cfg(test)]
 mod tests {
-    use header::{Header, Raw};
     use super::Cookie;
+    use header::{Header, Raw};
 
     #[test]
     fn test_set_and_get() {
@@ -292,8 +300,6 @@ mod tests {
     }
 }
 
-bench_header!(bench, Cookie, {
-    vec![b"foo=bar; baz=quux".to_vec()]
-});
+bench_header!(bench, Cookie, { vec![b"foo=bar; baz=quux".to_vec()] });
 
 standard_header!(Cookie, COOKIE);

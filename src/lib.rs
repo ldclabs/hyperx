@@ -16,16 +16,16 @@
 extern crate base64;
 extern crate bytes;
 extern crate http;
+extern crate httpdate;
 extern crate language_tags;
 pub extern crate mime;
 extern crate percent_encoding;
-extern crate httpdate;
 extern crate unicase;
 
 #[cfg(all(test, feature = "nightly"))]
 extern crate test;
 
-pub use error::{Result, Error};
+pub use error::{Error, Result};
 
 #[cfg(feature = "headers")]
 pub use header::Headers;
@@ -33,5 +33,5 @@ pub use header::Headers;
 pub use method::Method;
 
 mod error;
-mod method;
 pub mod header;
+mod method;

@@ -58,7 +58,7 @@ header! {
     (AccessControlAllowHeaders, "Access-Control-Allow-Headers") => (Ascii<String>)*
 
     test_access_control_allow_headers {
-        test_header!(test1, vec![b"accept-language, date"]);
+        test_header!(test1, [b"accept-language, date"]);
     }
 }
 

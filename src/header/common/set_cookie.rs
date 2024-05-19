@@ -83,16 +83,17 @@ __hyper__deref!(SetCookie => Vec<String>);
 
 impl Header for SetCookie {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Set-Cookie";
+        static NAME: &str = "Set-Cookie";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<SetCookie>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         let mut set_cookies = Vec::with_capacity(raw.len());
         for set_cookies_raw in raw.iter() {
-            if let Ok(s) = from_utf8(&set_cookies_raw[..]) {
+            if let Ok(s) = from_utf8(set_cookies_raw) {
                 set_cookies.push(s.trim().to_owned());
             }
         }
@@ -115,13 +116,13 @@ impl Header for SetCookie {
 #[cfg(feature = "headers")]
 #[test]
 fn test_set_cookie_fmt() {
-    use ::header::Headers;
+    use header::Headers;
     let mut headers = Headers::new();
-    headers.set(SetCookie(vec![
-        "foo=bar".into(),
-        "baz=quux".into(),
-    ]));
-    assert_eq!(headers.to_string(), "Set-Cookie: foo=bar\r\nSet-Cookie: baz=quux\r\n");
+    headers.set(SetCookie(vec!["foo=bar".into(), "baz=quux".into()]));
+    assert_eq!(
+        headers.to_string(),
+        "Set-Cookie: foo=bar\r\nSet-Cookie: baz=quux\r\n"
+    );
 }
 
 standard_header!(SetCookie, SET_COOKIE);

@@ -40,10 +40,12 @@ header! {
 
     test_referer {
         // Testcase from the RFC
-        test_header!(test1, vec![b"http://www.example.org/hypertext/Overview.html"]);
+        test_header!(test1, [b"http://www.example.org/hypertext/Overview.html"]);
     }
 }
 
-bench_header!(bench, Referer, { vec![b"http://foo.com/hello:3000".to_vec()] });
+bench_header!(bench, Referer, {
+    vec![b"http://foo.com/hello:3000".to_vec()]
+});
 
 standard_header!(Referer, REFERER);

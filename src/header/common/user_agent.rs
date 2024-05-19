@@ -40,7 +40,7 @@ header! {
 
     test_user_agent {
         // Testcase from RFC
-        test_header!(test1, vec![b"CERN-LineMode/2.15 libwww/2.17b3"]);
+        test_header!(test1, [b"CERN-LineMode/2.15 libwww/2.17b3"]);
         // Own testcase
         test_header!(test2, vec![b"Bunnies"], Some(UserAgent::new("Bunnies")));
     }

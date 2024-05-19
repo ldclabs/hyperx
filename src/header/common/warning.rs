@@ -1,7 +1,7 @@
-use std::fmt;
-use std::str::{FromStr};
-use header::{Header, HttpDate, RawLike};
 use header::parsing::from_one_raw_str;
+use header::{Header, HttpDate, RawLike};
+use std::fmt;
+use std::str::FromStr;
 
 /// `Warning` header, defined in [RFC7234](https://tools.ietf.org/html/rfc7234#section-5.5)
 ///
@@ -88,17 +88,18 @@ pub struct Warning {
     /// The warning message describing the error.
     pub text: String,
     /// An optional warning date.
-    pub date: Option<HttpDate>
+    pub date: Option<HttpDate>,
 }
 
 impl Header for Warning {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Warning";
+        static NAME: &str = "Warning";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<Warning>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         from_one_raw_str(raw)
     }
@@ -111,8 +112,12 @@ impl Header for Warning {
 impl fmt::Display for Warning {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.date {
-            Some(date) => write!(f, "{:03} {} \"{}\" \"{}\"", self.code, self.agent, self.text, date),
-            None => write!(f, "{:03} {} \"{}\"", self.code, self.agent, self.text)
+            Some(date) => write!(
+                f,
+                "{:03} {} \"{}\" \"{}\"",
+                self.code, self.agent, self.text, date
+            ),
+            None => write!(f, "{:03} {} \"{}\"", self.code, self.agent, self.text),
         }
     }
 }
@@ -125,30 +130,30 @@ impl FromStr for Warning {
         let code = match warning_split.next() {
             Some(c) => match c.parse::<u16>() {
                 Ok(c) => c,
-                Err(..) => return Err(::Error::Header)
+                Err(..) => return Err(::Error::Header),
             },
-            None => return Err(::Error::Header)
+            None => return Err(::Error::Header),
         };
         let agent = match warning_split.next() {
             Some(a) => a.to_string(),
-            None => return Err(::Error::Header)
+            None => return Err(::Error::Header),
         };
 
         let mut warning_split = s.split('"').skip(1);
         let text = match warning_split.next() {
             Some(t) => t.to_string(),
-            None => return Err(::Error::Header)
+            None => return Err(::Error::Header),
         };
-        let date = match warning_split.skip(1).next() {
+        let date = match warning_split.nth(1) {
             Some(d) => d.parse::<HttpDate>().ok(),
-            None => None // Optional
+            None => None, // Optional
         };
 
         Ok(Warning {
-            code: code,
-            agent: agent,
-            text: text,
-            date: date
+            code,
+            agent,
+            text,
+            date,
         })
     }
 }
@@ -160,41 +165,49 @@ mod tests {
 
     #[test]
     fn test_parsing() {
-        let r: Raw = vec![
-            b"112 - \"network down\" \"Sat, 25 Aug 2012 23:34:45 GMT\"".to_vec()
-        ].into();
+        let r: Raw =
+            vec![b"112 - \"network down\" \"Sat, 25 Aug 2012 23:34:45 GMT\"".to_vec()].into();
         let warning = Header::parse_header(&r);
-        assert_eq!(warning.ok(), Some(Warning {
-            code: 112,
-            agent: "-".to_owned(),
-            text: "network down".to_owned(),
-            date: "Sat, 25 Aug 2012 23:34:45 GMT".parse::<HttpDate>().ok()
-        }));
+        assert_eq!(
+            warning.ok(),
+            Some(Warning {
+                code: 112,
+                agent: "-".to_owned(),
+                text: "network down".to_owned(),
+                date: "Sat, 25 Aug 2012 23:34:45 GMT".parse::<HttpDate>().ok()
+            })
+        );
 
-        let r: Raw = vec![
-            b"299 api.hyper.rs:8080 \"Deprecated API : \
-              use newapi.hyper.rs instead.\"".to_vec()
-        ].into();
+        let r: Raw = vec![b"299 api.hyper.rs:8080 \"Deprecated API : \
+              use newapi.hyper.rs instead.\""
+            .to_vec()]
+        .into();
         let warning = Header::parse_header(&r);
-        assert_eq!(warning.ok(), Some(Warning {
-            code: 299,
-            agent: "api.hyper.rs:8080".to_owned(),
-            text: "Deprecated API : use newapi.hyper.rs instead.".to_owned(),
-            date: None
-        }));
+        assert_eq!(
+            warning.ok(),
+            Some(Warning {
+                code: 299,
+                agent: "api.hyper.rs:8080".to_owned(),
+                text: "Deprecated API : use newapi.hyper.rs instead.".to_owned(),
+                date: None
+            })
+        );
 
-        let r: Raw = vec![
-            b"299 api.hyper.rs:8080 \"Deprecated API : \
+        let r: Raw = vec![b"299 api.hyper.rs:8080 \"Deprecated API : \
               use newapi.hyper.rs instead.\" \
-              \"Tue, 15 Nov 1994 08:12:31 GMT\"".to_vec()
-        ].into();
+              \"Tue, 15 Nov 1994 08:12:31 GMT\""
+            .to_vec()]
+        .into();
         let warning = Header::parse_header(&r);
-        assert_eq!(warning.ok(), Some(Warning {
-            code: 299,
-            agent: "api.hyper.rs:8080".to_owned(),
-            text: "Deprecated API : use newapi.hyper.rs instead.".to_owned(),
-            date: "Tue, 15 Nov 1994 08:12:31 GMT".parse::<HttpDate>().ok()
-        }));
+        assert_eq!(
+            warning.ok(),
+            Some(Warning {
+                code: 299,
+                agent: "api.hyper.rs:8080".to_owned(),
+                text: "Deprecated API : use newapi.hyper.rs instead.".to_owned(),
+                date: "Tue, 15 Nov 1994 08:12:31 GMT".parse::<HttpDate>().ok()
+            })
+        );
     }
 }
 

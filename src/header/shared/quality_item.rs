@@ -43,10 +43,7 @@ impl<T> QualityItem<T> {
     /// The item can be of any type.
     /// The quality should be a value in the range [0, 1].
     pub fn new(item: T, quality: Quality) -> QualityItem<T> {
-        QualityItem {
-            item: item,
-            quality: quality
-        }
+        QualityItem { item, quality }
     }
 }
 
@@ -57,13 +54,12 @@ impl<T: PartialEq> cmp::PartialOrd for QualityItem<T> {
 }
 
 impl<T: fmt::Display> fmt::Display for QualityItem<T> {
-
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.item, f)?;
         match self.quality.0 {
             1000 => Ok(()),
             0 => f.write_str("; q=0"),
-            x => write!(f, "; q=0.{}", format!("{:03}", x).trim_end_matches('0'))
+            x => write!(f, "; q=0.{}", format!("{:03}", x).trim_end_matches('0')),
         }
     }
 }
@@ -91,13 +87,13 @@ impl<T: str::FromStr> str::FromStr for QualityItem<T> {
                 }
                 match q_part.parse::<f32>() {
                     Ok(q_value) => {
-                        if 0f32 <= q_value && q_value <= 1f32 {
+                        if (0f32..=1f32).contains(&q_value) {
                             quality = q_value;
                             raw_item = parts[1];
-                            } else {
-                                return Err(::Error::Header);
-                            }
-                        },
+                        } else {
+                            return Err(::Error::Header);
+                        }
+                    }
                     Err(_) => return Err(::Error::Header),
                 }
             }
@@ -115,7 +111,10 @@ fn from_f32(f: f32) -> Quality {
     // this function is only used internally. A check that `f` is within range
     // should be done before calling this method. Just in case, this
     // debug_assert should catch if we were forgetful
-    debug_assert!(f >= 0f32 && f <= 1f32, "q value must be between 0.0 and 1.0");
+    debug_assert!(
+        (0f32..=1f32).contains(&f),
+        "q value must be between 0.0 and 1.0"
+    );
     Quality((f * 1000f32) as u16)
 }
 
@@ -148,7 +147,10 @@ mod internal {
 
     impl IntoQuality for f32 {
         fn into_quality(self) -> Quality {
-            assert!(self >= 0f32 && self <= 1f32, "float must be between 0.0 and 1.0");
+            assert!(
+                (0f32..=1f32).contains(&self),
+                "float must be between 0.0 and 1.0"
+            );
             super::from_f32(self)
         }
     }
@@ -167,8 +169,8 @@ mod internal {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::encoding::*;
+    use super::*;
 
     #[test]
     fn test_quality_item_fmt_q_1() {
@@ -183,7 +185,7 @@ mod tests {
     #[test]
     fn test_quality_item_fmt_q_05() {
         // Custom value
-        let x = QualityItem{
+        let x = QualityItem {
             item: EncodingExt("identity".to_owned()),
             quality: Quality(500),
         };
@@ -193,7 +195,7 @@ mod tests {
     #[test]
     fn test_quality_item_fmt_q_0() {
         // Custom value
-        let x = QualityItem{
+        let x = QualityItem {
             item: EncodingExt("identity".to_owned()),
             quality: Quality(0),
         };
@@ -203,22 +205,46 @@ mod tests {
     #[test]
     fn test_quality_item_from_str1() {
         let x: ::Result<QualityItem<Encoding>> = "chunked".parse();
-        assert_eq!(x.unwrap(), QualityItem{ item: Chunked, quality: Quality(1000), });
+        assert_eq!(
+            x.unwrap(),
+            QualityItem {
+                item: Chunked,
+                quality: Quality(1000),
+            }
+        );
     }
     #[test]
     fn test_quality_item_from_str2() {
         let x: ::Result<QualityItem<Encoding>> = "chunked; q=1".parse();
-        assert_eq!(x.unwrap(), QualityItem{ item: Chunked, quality: Quality(1000), });
+        assert_eq!(
+            x.unwrap(),
+            QualityItem {
+                item: Chunked,
+                quality: Quality(1000),
+            }
+        );
     }
     #[test]
     fn test_quality_item_from_str3() {
         let x: ::Result<QualityItem<Encoding>> = "gzip; q=0.5".parse();
-        assert_eq!(x.unwrap(), QualityItem{ item: Gzip, quality: Quality(500), });
+        assert_eq!(
+            x.unwrap(),
+            QualityItem {
+                item: Gzip,
+                quality: Quality(500),
+            }
+        );
     }
     #[test]
     fn test_quality_item_from_str4() {
         let x: ::Result<QualityItem<Encoding>> = "gzip; q=0.273".parse();
-        assert_eq!(x.unwrap(), QualityItem{ item: Gzip, quality: Quality(273), });
+        assert_eq!(
+            x.unwrap(),
+            QualityItem {
+                item: Gzip,
+                quality: Quality(273),
+            }
+        );
     }
     #[test]
     fn test_quality_item_from_str5() {
@@ -245,14 +271,14 @@ mod tests {
 
     #[test]
     #[should_panic] // FIXME - 32-bit msvc unwinding broken
-    #[cfg_attr(all(target_arch="x86", target_env="msvc"), ignore)]
+    #[cfg_attr(all(target_arch = "x86", target_env = "msvc"), ignore)]
     fn test_quality_invalid() {
         q(-1.0);
     }
 
     #[test]
     #[should_panic] // FIXME - 32-bit msvc unwinding broken
-    #[cfg_attr(all(target_arch="x86", target_env="msvc"), ignore)]
+    #[cfg_attr(all(target_arch = "x86", target_env = "msvc"), ignore)]
     fn test_quality_invalid2() {
         q(2.0);
     }

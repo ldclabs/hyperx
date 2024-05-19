@@ -155,14 +155,13 @@
 //! ```
 use std::borrow::Cow;
 use std::fmt;
-
 use unicase::Ascii;
 
 use self::sealed::HeaderClone;
 
-pub use self::shared::*;
 pub use self::common::*;
 pub use self::raw::{Raw, RawLike};
+pub use self::shared::*;
 
 #[cfg(feature = "headers")]
 use std::{
@@ -172,19 +171,19 @@ use std::{
 };
 
 #[cfg(feature = "headers")]
-use self::internals::{Item, VecMap, Entry};
+use self::internals::{Entry, Item, VecMap};
 
 #[cfg(feature = "headers")]
 use bytes::Bytes;
 
-pub use self::compat::{TypedHeaders, StandardHeader, ValueMapIter};
+pub use self::compat::{StandardHeader, TypedHeaders, ValueMapIter};
 
 mod common;
+mod compat;
 mod internals;
+pub mod parsing;
 mod raw;
 mod shared;
-pub mod parsing;
-mod compat;
 
 /// A trait for any object that will represent a header field and value.
 ///
@@ -195,7 +194,8 @@ pub trait Header: 'static + HeaderClone + Send + Sync {
     ///
     /// This will become an associated constant once available.
     fn header_name() -> &'static str
-    where Self: Sized;
+    where
+        Self: Sized;
 
     /// Parse a header from a raw stream of bytes.
     ///
@@ -205,7 +205,9 @@ pub trait Header: 'static + HeaderClone + Send + Sync {
     /// than one field value. If that's the case, you **should** return `None`
     /// if `raw.len() > 1`.
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<Self>
-    where T: RawLike<'a>, Self: Sized;
+    where
+        T: RawLike<'a>,
+        Self: Sized;
 
     /// Format a header to outgoing stream.
     ///
@@ -251,7 +253,6 @@ enum Multi<'a, 'b: 'a> {
 }
 
 impl<'a, 'b> Formatter<'a, 'b> {
-
     /// Format one 'line' of a header.
     ///
     /// This writes the header name plus the `Display` value as a single line.
@@ -271,7 +272,7 @@ impl<'a, 'b> Formatter<'a, 'b> {
                 f.write_str(": ")?;
                 write!(NewlineReplacer(*f), "{}", line)?;
                 f.write_str("\r\n")
-            },
+            }
             Multi::Join(ref mut first, ref mut f) => {
                 if !*first {
                     f.write_str(", ")?;
@@ -289,7 +290,10 @@ impl<'a, 'b> Formatter<'a, 'b> {
         }
     }
 
-    fn danger_fmt_line_without_newline_replacer<T: fmt::Display>(&mut self, line: &T) -> fmt::Result {
+    fn danger_fmt_line_without_newline_replacer<T: fmt::Display>(
+        &mut self,
+        line: &T,
+    ) -> fmt::Result {
         use std::fmt::Write;
         match self.0 {
             Multi::Line(name, ref mut f) => {
@@ -297,7 +301,7 @@ impl<'a, 'b> Formatter<'a, 'b> {
                 f.write_str(": ")?;
                 fmt::Display::fmt(line, f)?;
                 f.write_str("\r\n")
-            },
+            }
             Multi::Join(ref mut first, ref mut f) => {
                 if !*first {
                     f.write_str(", ")?;
@@ -385,7 +389,9 @@ impl dyn Header + Send + Sync {
     #[cfg(feature = "headers")]
     #[inline]
     unsafe fn downcast_unchecked<T: 'static>(self: Box<Self>) -> T {
-        *Box::from_raw(mem::transmute::<*mut _, (*mut (), *mut ())>(Box::into_raw(self)).0 as *mut T)
+        *Box::from_raw(
+            mem::transmute::<*mut _, (*mut (), *mut ())>(Box::into_raw(self)).0 as *mut T,
+        )
     }
 }
 
@@ -470,7 +476,6 @@ literals! {
 
 #[cfg(feature = "headers")]
 impl Headers {
-
     /// Creates a new, empty headers map.
     #[inline]
     pub fn new() -> Headers {
@@ -481,7 +486,7 @@ impl Headers {
     #[inline]
     pub fn with_capacity(len: usize) -> Headers {
         Headers {
-            data: VecMap::with_capacity(len)
+            data: VecMap::with_capacity(len),
         }
     }
 
@@ -489,20 +494,24 @@ impl Headers {
     ///
     /// The field is determined by the type of the value being set.
     pub fn set<H: Header>(&mut self, value: H) {
-        self.data.insert(HeaderName(Ascii::new(Cow::Borrowed(header_name::<H>()))),
-                         Item::new_typed(value));
+        self.data.insert(
+            HeaderName(Ascii::new(Cow::Borrowed(header_name::<H>()))),
+            Item::new_typed(value),
+        );
     }
 
     /// Get a reference to the header field's value, if it exists.
     pub fn get<H: Header>(&self) -> Option<&H> {
-        self.data.get(&HeaderName(Ascii::new(Cow::Borrowed(header_name::<H>()))))
-        .and_then(Item::typed::<H>)
+        self.data
+            .get(&HeaderName(Ascii::new(Cow::Borrowed(header_name::<H>()))))
+            .and_then(Item::typed::<H>)
     }
 
     /// Get a mutable reference to the header field's value, if it exists.
     pub fn get_mut<H: Header>(&mut self) -> Option<&mut H> {
-        self.data.get_mut(&HeaderName(Ascii::new(Cow::Borrowed(header_name::<H>()))))
-        .and_then(Item::typed_mut::<H>)
+        self.data
+            .get_mut(&HeaderName(Ascii::new(Cow::Borrowed(header_name::<H>()))))
+            .and_then(Item::typed_mut::<H>)
     }
 
     /// Returns a boolean of whether a certain header is in the map.
@@ -517,7 +526,8 @@ impl Headers {
     /// assert!(headers.has::<ContentType>());
     /// ```
     pub fn has<H: Header>(&self) -> bool {
-        self.data.contains_key(&HeaderName(Ascii::new(Cow::Borrowed(header_name::<H>()))))
+        self.data
+            .contains_key(&HeaderName(Ascii::new(Cow::Borrowed(header_name::<H>()))))
     }
 
     /// Removes a header from the map, if one existed.
@@ -526,14 +536,15 @@ impl Headers {
     /// Note that this function may return `None` even though a header was removed. If you want to
     /// know whether a header exists, rather rely on `has`.
     pub fn remove<H: Header>(&mut self) -> Option<H> {
-        self.data.remove(&HeaderName(Ascii::new(Cow::Borrowed(header_name::<H>()))))
+        self.data
+            .remove(&HeaderName(Ascii::new(Cow::Borrowed(header_name::<H>()))))
             .and_then(Item::into_typed::<H>)
     }
 
     /// Returns an iterator over the header fields.
     pub fn iter(&self) -> HeadersItems {
         HeadersItems {
-            inner: self.data.iter()
+            inner: self.data.iter(),
         }
     }
 
@@ -561,9 +572,7 @@ impl Headers {
     /// assert_eq!(raw, "text/plain");
     /// ```
     pub fn get_raw(&self, name: &str) -> Option<&Raw> {
-        self.data
-            .get(name)
-            .map(Item::raw)
+        self.data.get(name).map(Item::raw)
     }
 
     /// Set the raw value of a header, bypassing any typed headers.
@@ -581,7 +590,8 @@ impl Headers {
     pub fn set_raw<K: Into<Cow<'static, str>>, V: Into<Raw>>(&mut self, name: K, value: V) {
         let name = name.into();
         let value = value.into();
-        self.data.insert(HeaderName(Ascii::new(name)), Item::new_raw(value));
+        self.data
+            .insert(HeaderName(Ascii::new(name)), Item::new_raw(value));
     }
 
     /// Append a value to raw value of this header.
@@ -626,7 +636,6 @@ impl Headers {
     pub fn remove_raw(&mut self, name: &str) {
         self.data.remove(name);
     }
-
 }
 
 #[cfg(feature = "headers")]
@@ -638,8 +647,10 @@ impl PartialEq for Headers {
 
         for header in self.iter() {
             match other.get_raw(header.name()) {
-                Some(val) if val == self.get_raw(header.name()).unwrap() => {},
-                _ => { return false; }
+                Some(val) if val == self.get_raw(header.name()).unwrap() => {}
+                _ => {
+                    return false;
+                }
             }
         }
         true
@@ -662,7 +673,10 @@ impl fmt::Debug for Headers {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_map()
-            .entries(self.iter().map(|view| (view.0.as_ref(), ValueString(view.1))))
+            .entries(
+                self.iter()
+                    .map(|view| (view.0.as_ref(), ValueString(view.1))),
+            )
             .finish()
     }
 }
@@ -671,7 +685,7 @@ impl fmt::Debug for Headers {
 #[cfg(feature = "headers")]
 #[allow(missing_debug_implementations)]
 pub struct HeadersItems<'a> {
-    inner: ::std::slice::Iter<'a, (HeaderName, Item)>
+    inner: ::std::slice::Iter<'a, (HeaderName, Item)>,
 }
 
 #[cfg(feature = "headers")]
@@ -729,7 +743,8 @@ impl<'a> HeaderView<'a> {
 impl<'a> fmt::Display for HeaderView<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.1.write_h1(&mut Formatter(Multi::Line(self.0.as_ref(), f)))
+        self.1
+            .write_h1(&mut Formatter(Multi::Line(self.0.as_ref(), f)))
     }
 }
 
@@ -743,7 +758,7 @@ impl<'a> fmt::Debug for HeaderView<'a> {
 
 #[cfg(feature = "headers")]
 impl<'a> Extend<HeaderView<'a>> for Headers {
-    fn extend<I: IntoIterator<Item=HeaderView<'a>>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = HeaderView<'a>>>(&mut self, iter: I) {
         for header in iter {
             self.data.insert((*header.0).clone(), (*header.1).clone());
         }
@@ -752,7 +767,7 @@ impl<'a> Extend<HeaderView<'a>> for Headers {
 
 #[cfg(feature = "headers")]
 impl<'a> Extend<(&'a str, Bytes)> for Headers {
-    fn extend<I: IntoIterator<Item=(&'a str, Bytes)>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = (&'a str, Bytes)>>(&mut self, iter: I) {
         for (name, value) in iter {
             let name = HeaderName(Ascii::new(maybe_literal(name)));
             //let trim = header.value.iter().rev().take_while(|&&x| x == b' ').count();
@@ -771,7 +786,7 @@ impl<'a> Extend<(&'a str, Bytes)> for Headers {
 
 #[cfg(feature = "headers")]
 impl<'a> FromIterator<HeaderView<'a>> for Headers {
-    fn from_iter<I: IntoIterator<Item=HeaderView<'a>>>(iter: I) -> Headers {
+    fn from_iter<I: IntoIterator<Item = HeaderView<'a>>>(iter: I) -> Headers {
         let mut headers = Headers::new();
         headers.extend(iter);
         headers
@@ -822,24 +837,22 @@ impl PartialEq<HeaderName> for str {
 mod tests {
     use std::fmt;
 
-    use super::{
-        Header, Headers, ContentLength, ContentType, Host, RawLike, SetCookie
-    };
+    use super::{ContentLength, ContentType, Header, Headers, Host, RawLike, SetCookie};
 
     #[cfg(feature = "nightly")]
     use test::Bencher;
 
     macro_rules! make_header {
-        ($name:expr, $value:expr) => ({
+        ($name:expr, $value:expr) => {{
             let mut headers = Headers::new();
             headers.set_raw(String::from_utf8($name.to_vec()).unwrap(), $value.to_vec());
             headers
-        });
-        ($text:expr) => ({
+        }};
+        ($text:expr) => {{
             let bytes = $text;
             let colon = bytes.iter().position(|&x| x == b':').unwrap();
             make_header!(&bytes[..colon], &bytes[colon + 2..])
-        })
+        }};
     }
 
     #[test]
@@ -856,13 +869,15 @@ mod tests {
             "content-length"
         }
         fn parse_header<'a, T>(raw: &'a T) -> ::Result<CrazyLength>
-        where T: RawLike<'a>
+        where
+            T: RawLike<'a>,
         {
             use std::str::from_utf8;
             use std::str::FromStr;
 
             if let Some(line) = raw.one() {
-                let s = from_utf8(line).map(|s| FromStr::from_str(s).map_err(|_| ::Error::Header))?;
+                let s =
+                    from_utf8(line).map(|s| FromStr::from_str(s).map_err(|_| ::Error::Header))?;
                 s.map(|u| CrazyLength(Some(false), u))
             } else {
                 Err(::Error::Header)
@@ -885,7 +900,10 @@ mod tests {
     fn test_different_structs_for_same_header() {
         let headers = make_header!(b"Content-Length: 10");
         assert_eq!(headers.get::<ContentLength>(), Some(&ContentLength(10)));
-        assert_eq!(headers.get::<CrazyLength>(), Some(&CrazyLength(Some(false), 10)));
+        assert_eq!(
+            headers.get::<CrazyLength>(),
+            Some(&CrazyLength(Some(false), 10))
+        );
     }
 
     #[test]
@@ -919,16 +937,22 @@ mod tests {
 
         headers.set(SetCookie(vec![
             "foo=bar".to_string(),
-            "baz=quux; Path=/path".to_string()
+            "baz=quux; Path=/path".to_string(),
         ]));
-        assert_eq!(headers.get_raw("set-cookie").unwrap(), &["foo=bar", "baz=quux; Path=/path"][..]);
+        assert_eq!(
+            headers.get_raw("set-cookie").unwrap(),
+            &["foo=bar", "baz=quux; Path=/path"][..]
+        );
     }
 
     #[test]
     fn test_get_mutable() {
         let mut headers = make_header!(b"Content-Length: 10");
         *headers.get_mut::<ContentLength>().unwrap() = ContentLength(20);
-        assert_eq!(headers.get_raw("content-length").unwrap(), &[b"20".to_vec()][..]);
+        assert_eq!(
+            headers.get_raw("content-length").unwrap(),
+            &[b"20".to_vec()][..]
+        );
         assert_eq!(*headers.get::<ContentLength>().unwrap(), ContentLength(20));
     }
 
@@ -956,7 +980,10 @@ mod tests {
         let mut headers = Headers::new();
         headers.set(ContentLength(10));
         headers.set_raw("content-LENGTH", vec![b"20".to_vec()]);
-        assert_eq!(headers.get_raw("Content-length").unwrap(), &[b"20".to_vec()][..]);
+        assert_eq!(
+            headers.get_raw("Content-length").unwrap(),
+            &[b"20".to_vec()][..]
+        );
         assert_eq!(headers.get(), Some(&ContentLength(20)));
     }
 
@@ -965,7 +992,10 @@ mod tests {
         let mut headers = Headers::new();
         headers.set(ContentLength(10));
         headers.append_raw("content-LENGTH", b"20".to_vec());
-        assert_eq!(headers.get_raw("Content-length").unwrap(), &[b"10".to_vec(), b"20".to_vec()][..]);
+        assert_eq!(
+            headers.get_raw("Content-length").unwrap(),
+            &[b"10".to_vec(), b"20".to_vec()][..]
+        );
         headers.append_raw("x-foo", "bar");
         assert_eq!(headers.get_raw("x-foo").unwrap(), &[b"bar".to_vec()][..]);
     }
@@ -1175,7 +1205,9 @@ mod tests {
         b.iter(|| {
             let _ = write!(buf, "{}", headers);
             ::test::black_box(&buf);
-            unsafe { buf.as_mut_vec().set_len(0); }
+            unsafe {
+                buf.as_mut_vec().set_len(0);
+            }
         })
     }
 }

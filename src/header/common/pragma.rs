@@ -1,6 +1,5 @@
+use header::{parsing, Header, RawLike};
 use std::fmt;
-
-use header::{Header, RawLike, parsing};
 
 /// The `Pragma` header defined by HTTP/1.0.
 ///
@@ -44,18 +43,19 @@ pub enum Pragma {
 
 impl Header for Pragma {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Pragma";
+        static NAME: &str = "Pragma";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<Pragma>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
-        parsing::from_one_raw_str(raw).and_then(|s: String| {
+        parsing::from_one_raw_str(raw).map(|s: String| {
             let slice = &s.to_ascii_lowercase()[..];
             match slice {
-                "no-cache" => Ok(Pragma::NoCache),
-                _ => Ok(Pragma::Ext(s)),
+                "no-cache" => Pragma::NoCache,
+                _ => Pragma::Ext(s),
             }
         })
     }

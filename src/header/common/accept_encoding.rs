@@ -64,13 +64,13 @@ header! {
 
     test_accept_encoding {
         // From the RFC
-        test_header!(test1, vec![b"compress, gzip"]);
+        test_header!(test1, [b"compress, gzip"]);
         test_header!(test2, vec![b""], Some(AcceptEncoding(vec![])));
-        test_header!(test3, vec![b"*"]);
+        test_header!(test3, [b"*"]);
         // Note: Removed quality 1 from gzip
-        test_header!(test4, vec![b"compress;q=0.5, gzip"]);
+        test_header!(test4, [b"compress;q=0.5, gzip"]);
         // Note: Removed quality 1 from gzip
-        test_header!(test5, vec![b"gzip, identity; q=0.5, *;q=0"]);
+        test_header!(test5, [b"gzip, identity; q=0.5, *;q=0"]);
     }
 }
 

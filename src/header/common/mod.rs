@@ -6,11 +6,11 @@
 //! strongly-typed theme, the [mime](https://docs.rs/mime) crate
 //! is used, such as `ContentType(pub Mime)`.
 
+pub use self::accept::Accept;
 pub use self::accept_charset::AcceptCharset;
 pub use self::accept_encoding::AcceptEncoding;
 pub use self::accept_language::AcceptLanguage;
 pub use self::accept_ranges::{AcceptRanges, RangeUnit};
-pub use self::accept::Accept;
 pub use self::access_control_allow_credentials::AccessControlAllowCredentials;
 pub use self::access_control_allow_headers::AccessControlAllowHeaders;
 pub use self::access_control_allow_methods::AccessControlAllowMethods;
@@ -20,10 +20,10 @@ pub use self::access_control_max_age::AccessControlMaxAge;
 pub use self::access_control_request_headers::AccessControlRequestHeaders;
 pub use self::access_control_request_method::AccessControlRequestMethod;
 pub use self::allow::Allow;
-pub use self::authorization::{Authorization, Scheme, Basic, Bearer};
+pub use self::authorization::{Authorization, Basic, Bearer, Scheme};
 pub use self::cache_control::{CacheControl, CacheDirective};
 pub use self::connection::{Connection, ConnectionOption};
-pub use self::content_disposition::{ContentDisposition, DispositionType, DispositionParam};
+pub use self::content_disposition::{ContentDisposition, DispositionParam, DispositionType};
 pub use self::content_encoding::ContentEncoding;
 pub use self::content_language::ContentLanguage;
 pub use self::content_length::ContentLength;
@@ -44,14 +44,14 @@ pub use self::if_range::IfRange;
 pub use self::if_unmodified_since::IfUnmodifiedSince;
 pub use self::last_event_id::LastEventId;
 pub use self::last_modified::LastModified;
-pub use self::link::{Link, LinkValue, RelationType, MediaDesc};
+pub use self::link::{Link, LinkValue, MediaDesc, RelationType};
 pub use self::location::Location;
 pub use self::origin::Origin;
 pub use self::pragma::Pragma;
 pub use self::prefer::{Prefer, Preference};
 pub use self::preference_applied::PreferenceApplied;
 pub use self::proxy_authorization::ProxyAuthorization;
-pub use self::range::{Range, ByteRangeSpec};
+pub use self::range::{ByteRangeSpec, Range};
 pub use self::referer::Referer;
 pub use self::referrer_policy::ReferrerPolicy;
 pub use self::retry_after::RetryAfter;
@@ -60,7 +60,7 @@ pub use self::set_cookie::SetCookie;
 pub use self::strict_transport_security::StrictTransportSecurity;
 pub use self::te::Te;
 pub use self::transfer_encoding::TransferEncoding;
-pub use self::upgrade::{Upgrade, Protocol, ProtocolName};
+pub use self::upgrade::{Protocol, ProtocolName, Upgrade};
 pub use self::user_agent::UserAgent;
 pub use self::vary::Vary;
 pub use self::warning::Warning;
@@ -116,7 +116,7 @@ macro_rules! __hyper__deref {
                 &mut self.0
             }
         }
-    }
+    };
 }
 
 #[doc(hidden)]
@@ -165,7 +165,6 @@ macro_rules! test_header {
     ($id:ident, $raw:expr, $typed:expr) => {
         #[test]
         fn $id() {
-
             let a: Vec<Vec<u8>> = $raw.iter().map(|x| x.to_vec()).collect();
             let a: Raw = a.into();
             let val = HeaderField::parse_header(&a);
@@ -175,7 +174,7 @@ macro_rules! test_header {
             // Test formatting
             if typed.is_some() {
                 let raw = &($raw)[..];
-                let mut iter = raw.iter().map(|b|str::from_utf8(&b[..]).unwrap());
+                let mut iter = raw.iter().map(|b| str::from_utf8(&b[..]).unwrap());
                 let mut joined = String::new();
                 joined.push_str(iter.next().unwrap());
                 for s in iter {
@@ -185,7 +184,7 @@ macro_rules! test_header {
                 assert_eq!(format!("{}", typed.unwrap()), joined);
             }
         }
-    }
+    };
 }
 
 /// Create a custom header type.
@@ -463,14 +462,14 @@ macro_rules! standard_header {
                 ::http::header::$hname
             }
         }
-    }
+    };
 }
 
+mod accept;
 mod accept_charset;
 mod accept_encoding;
 mod accept_language;
 mod accept_ranges;
-mod accept;
 mod access_control_allow_credentials;
 mod access_control_allow_headers;
 mod access_control_allow_methods;

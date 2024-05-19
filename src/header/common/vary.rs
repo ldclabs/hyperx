@@ -54,7 +54,7 @@ header! {
     (Vary, "Vary") => {Any / (Ascii<String>)+}
 
     test_vary {
-        test_header!(test1, vec![b"accept-encoding, accept-language"]);
+        test_header!(test1, [b"accept-encoding, accept-language"]);
 
         #[test]
         fn test2() {

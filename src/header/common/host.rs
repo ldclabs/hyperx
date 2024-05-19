@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
 
-use header::{Header, RawLike};
 use header::parsing::from_one_raw_str;
+use header::{Header, RawLike};
 
 /// The `Host` header.
 ///
@@ -32,14 +32,15 @@ use header::parsing::from_one_raw_str;
 #[derive(Clone, PartialEq, Debug)]
 pub struct Host {
     hostname: Cow<'static, str>,
-    port: Option<u16>
+    port: Option<u16>,
 }
 
 impl Host {
     /// Create a `Host` header, providing the hostname and optional port.
     pub fn new<H, P>(hostname: H, port: P) -> Host
-    where H: Into<Cow<'static, str>>,
-          P: Into<Option<u16>>
+    where
+        H: Into<Cow<'static, str>>,
+        P: Into<Option<u16>>,
     {
         Host {
             hostname: hostname.into(),
@@ -60,12 +61,13 @@ impl Host {
 
 impl Header for Host {
     fn header_name() -> &'static str {
-        static NAME: &'static str = "Host";
+        static NAME: &str = "Host";
         NAME
     }
 
     fn parse_header<'a, T>(raw: &'a T) -> ::Result<Host>
-    where T: RawLike<'a>
+    where
+        T: RawLike<'a>,
     {
         from_one_raw_str(raw)
     }
@@ -79,7 +81,7 @@ impl fmt::Display for Host {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.port {
             None | Some(80) | Some(443) => f.write_str(&self.hostname[..]),
-            Some(port) => write!(f, "{}:{}", self.hostname, port)
+            Some(port) => write!(f, "{}:{}", self.hostname, port),
         }
     }
 }
@@ -89,17 +91,15 @@ impl FromStr for Host {
 
     fn from_str(s: &str) -> ::Result<Host> {
         let idx = s.rfind(':');
-        let port = idx.and_then(
-            |idx| s[idx + 1..].parse().ok()
-        );
+        let port = idx.and_then(|idx| s[idx + 1..].parse().ok());
         let hostname = match port {
             None => s,
-            Some(_) => &s[..idx.unwrap()]
+            Some(_) => &s[..idx.unwrap()],
         };
 
         Ok(Host {
             hostname: hostname.to_owned().into(),
-            port: port,
+            port,
         })
     }
 }

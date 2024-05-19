@@ -1,12 +1,10 @@
 //! Implementation module for various compatibility features with the _http_
 //! crate.
 
-use std::fmt::Display;
-
-use http::header::{GetAll, HeaderMap, HeaderValue, ValueIter};
-
-use ::Result;
 use super::{Header, RawLike};
+use http::header::{GetAll, HeaderMap, HeaderValue, ValueIter};
+use std::fmt::Display;
+use Result;
 
 #[cfg(feature = "headers")]
 use std::convert::From;
@@ -15,7 +13,7 @@ use std::convert::From;
 use http;
 
 #[cfg(feature = "headers")]
-use super::{Headers};
+use super::Headers;
 
 /// A trait for the "standard" headers that have an associated `HeaderName`
 /// constant in the _http_ crate.
@@ -35,7 +33,8 @@ pub trait TypedHeaders {
     /// instead return an empty list value if no values are found.  To
     /// distinguish the not found case, use `try_decode` instead.
     fn decode<H>(&self) -> Result<H>
-        where H: StandardHeader;
+    where
+        H: StandardHeader;
 
     /// Decode and return `Header` type H or `Error::Header` if found, or
     /// return `None` if not found.
@@ -45,7 +44,8 @@ pub trait TypedHeaders {
     /// collection does contain such a key, it will return the header type H or
     /// `Error::Header`.
     fn try_decode<H>(&self) -> Option<Result<H>>
-        where H: StandardHeader;
+    where
+        H: StandardHeader;
 
     /// Encode and write the specified typed header value in the collection.
     ///
@@ -53,7 +53,8 @@ pub trait TypedHeaders {
     /// header. This will overwrite any preexisting values with the same
     /// key (`HeaderName`). Use `encode_append` instead to avoid this.
     fn encode<H>(&mut self, value: &H)
-        where H: StandardHeader + Display;
+    where
+        H: StandardHeader + Display;
 
     /// Encode and append the specified typed header value into the collection.
     ///
@@ -61,7 +62,8 @@ pub trait TypedHeaders {
     /// single header. If the collection previously had a value for the same
     /// key, the additional value is appended to the end.
     fn encode_append<H>(&mut self, value: &H)
-        where H: StandardHeader + Display;
+    where
+        H: StandardHeader + Display;
 }
 
 /// Iterator adaptor for HeaderValue
@@ -70,14 +72,16 @@ pub struct ValueMapIter<'a>(ValueIter<'a, HeaderValue>);
 
 impl TypedHeaders for HeaderMap {
     fn decode<H>(&self) -> Result<H>
-        where H: StandardHeader
+    where
+        H: StandardHeader,
     {
         let vals = self.get_all(H::http_header_name());
         H::parse_header(&vals)
     }
 
     fn try_decode<H>(&self) -> Option<Result<H>>
-        where H: StandardHeader
+    where
+        H: StandardHeader,
     {
         let hname = H::http_header_name();
         if self.contains_key(&hname) {
@@ -89,19 +93,23 @@ impl TypedHeaders for HeaderMap {
     }
 
     fn encode<H>(&mut self, val: &H)
-        where H: StandardHeader + Display
+    where
+        H: StandardHeader + Display,
     {
         self.insert(
             H::http_header_name(),
-            val.to_string().parse().expect("header value"));
+            val.to_string().parse().expect("header value"),
+        );
     }
 
     fn encode_append<H>(&mut self, val: &H)
-        where H: StandardHeader + Display
+    where
+        H: StandardHeader + Display,
     {
         self.append(
             H::http_header_name(),
-            val.to_string().parse().expect("header value"));
+            val.to_string().parse().expect("header value"),
+        );
     }
 }
 
@@ -136,19 +144,18 @@ impl<'a> From<&'a Headers> for http::HeaderMap {
     fn from(headers: &'a Headers) -> http::HeaderMap {
         let mut hmap = http::HeaderMap::new();
         for header in headers.iter() {
-            let name: http::header::HeaderName = header.name().parse()
-                .expect("convert invalid header name");
+            let name: http::header::HeaderName =
+                header.name().parse().expect("convert invalid header name");
             let entry = hmap.entry(name);
             let mut value_iter = header.raw().iter().map(|line| {
-                http::header::HeaderValue::from_bytes(line)
-                    .expect("convert invalid header value")
+                http::header::HeaderValue::from_bytes(line).expect("convert invalid header value")
             });
             match entry {
-                http::header::Entry::Occupied(mut  occupied) => {
+                http::header::Entry::Occupied(mut occupied) => {
                     for value in value_iter {
                         occupied.append(value);
                     }
-                },
+                }
                 http::header::Entry::Vacant(vacant) => {
                     if let Some(first_value) = value_iter.next() {
                         let mut occupied = vacant.insert_entry(first_value);
@@ -211,19 +218,17 @@ impl<'a> RawLike<'a> for &'a HeaderValue {
 
 #[cfg(test)]
 mod tests {
+    use header::{ContentEncoding, ContentLength, ETag, Encoding, Header, Te, TypedHeaders};
     use http;
-    use ::header::{
-        ContentEncoding, ContentLength, Encoding, ETag,
-        Header, Te, TypedHeaders};
 
     #[cfg(feature = "headers")]
-    use ::header::{Headers, Host};
+    use header::{Headers, Host};
 
     #[cfg(feature = "nightly")]
     use test::Bencher;
 
     #[cfg(feature = "nightly")]
-    use ::header::EntityTag;
+    use header::EntityTag;
 
     #[test]
     fn test_empty_decode() {
@@ -305,14 +310,13 @@ mod tests {
     #[test]
     fn test_encode_append() {
         let mut hmap = http::HeaderMap::new();
-        hmap.encode_append(
-            &ContentEncoding(vec![Encoding::Identity]));
-        hmap.encode_append(
-            &ContentEncoding(vec![Encoding::Gzip, Encoding::Chunked]));
+        hmap.encode_append(&ContentEncoding(vec![Encoding::Identity]));
+        hmap.encode_append(&ContentEncoding(vec![Encoding::Gzip, Encoding::Chunked]));
         let ce: ContentEncoding = hmap.decode().unwrap();
         assert_eq!(
             *ce,
-            vec![Encoding::Identity, Encoding::Gzip, Encoding::Chunked]);
+            vec![Encoding::Identity, Encoding::Gzip, Encoding::Chunked]
+        );
     }
 
     #[cfg(feature = "headers")]
@@ -328,8 +332,10 @@ mod tests {
         heads.set_raw("content-length", b"7050".as_ref());
         heads.set_raw("content-type", b"text/css; charset=utf-8".as_ref());
         heads.set_raw("last-modified", b"Wed, 12 Dec 2018 18:35:20 GMT".as_ref());
-        heads.set_raw("x-hello-human",
-                      b"Say hello back! @getBootstrapCDN on Twitter".as_ref());
+        heads.set_raw(
+            "x-hello-human",
+            b"Say hello back! @getBootstrapCDN on Twitter".as_ref(),
+        );
         heads.set_raw("access-control-allow-origin", b"*".as_ref());
         heads.set_raw("vary", b"Accept-Encoding".as_ref());
         heads.set_raw("x-cache", b"HIT".as_ref());
@@ -391,8 +397,10 @@ mod tests {
     #[test]
     fn test_value_parse() {
         let mut hmap = http::HeaderMap::new();
-        hmap.insert(http::header::CONTENT_ENCODING,
-                    "chunked, gzip".parse().unwrap());
+        hmap.insert(
+            http::header::CONTENT_ENCODING,
+            "chunked, gzip".parse().unwrap(),
+        );
         let val = hmap.get(http::header::CONTENT_ENCODING).unwrap();
         let ce = ContentEncoding::parse_header(&val).unwrap();
         assert_eq!(ce, ContentEncoding(vec![Encoding::Chunked, Encoding::Gzip]))
@@ -401,18 +409,17 @@ mod tests {
     #[test]
     fn test_multi_value_parse() {
         let mut hmap = http::HeaderMap::new();
-        hmap.insert(http::header::CONTENT_ENCODING,
-                    "chunked, gzip".parse().unwrap());
-        hmap.append(http::header::CONTENT_ENCODING,
-                    "br".parse().unwrap());
+        hmap.insert(
+            http::header::CONTENT_ENCODING,
+            "chunked, gzip".parse().unwrap(),
+        );
+        hmap.append(http::header::CONTENT_ENCODING, "br".parse().unwrap());
 
         let vals = hmap.get_all(http::header::CONTENT_ENCODING);
         let ce = ContentEncoding::parse_header(&vals).unwrap();
         assert_eq!(
             ce,
-            ContentEncoding(vec![
-                Encoding::Chunked, Encoding::Gzip, Encoding::Brotli
-            ])
+            ContentEncoding(vec![Encoding::Chunked, Encoding::Gzip, Encoding::Brotli])
         )
     }
 
@@ -420,8 +427,10 @@ mod tests {
     #[bench]
     fn bench_0_value_parse(b: &mut Bencher) {
         let mut hmap = http::HeaderMap::new();
-        hmap.insert(http::header::CONTENT_ENCODING,
-                    "chunked, gzip".parse().unwrap());
+        hmap.insert(
+            http::header::CONTENT_ENCODING,
+            "chunked, gzip".parse().unwrap(),
+        );
         b.iter(|| {
             let val = hmap.get(http::header::CONTENT_ENCODING).unwrap();
             ContentEncoding::parse_header(&val).unwrap();
@@ -433,8 +442,10 @@ mod tests {
     fn bench_0_value_parse_extra_str(b: &mut Bencher) {
         use header::Raw;
         let mut hmap = http::HeaderMap::new();
-        hmap.insert(http::header::CONTENT_ENCODING,
-                    "chunked, gzip".parse().unwrap());
+        hmap.insert(
+            http::header::CONTENT_ENCODING,
+            "chunked, gzip".parse().unwrap(),
+        );
         b.iter(|| {
             let val = hmap.get(http::header::CONTENT_ENCODING).unwrap();
             let r: Raw = val.to_str().unwrap().into();
@@ -525,13 +536,10 @@ mod tests {
     fn bench_4_encode_multi(b: &mut Bencher) {
         b.iter(|| {
             let mut hmap = http::HeaderMap::new();
-            hmap.encode(
-                &ContentEncoding(vec![Encoding::Identity]));
-            hmap.encode_append(
-                &ContentEncoding(vec![Encoding::Gzip, Encoding::Chunked]));
+            hmap.encode(&ContentEncoding(vec![Encoding::Identity]));
+            hmap.encode_append(&ContentEncoding(vec![Encoding::Gzip, Encoding::Chunked]));
             hmap.encode(&ContentLength(11));
-            hmap.encode(
-                &ETag(EntityTag::strong("pMMV3zmCrXr-n4ZZLR9".to_owned())));
+            hmap.encode(&ETag(EntityTag::strong("pMMV3zmCrXr-n4ZZLR9".to_owned())));
             assert_eq!(hmap.len(), 4);
         })
     }
