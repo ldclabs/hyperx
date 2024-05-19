@@ -1,6 +1,6 @@
 [package]
 name = "hyperx"
-version = "1.4.1"
+version = "1.4.2"
 description = "Hyper's typed header module, eXtracted and improved"
 readme = "README.md"
 documentation = "https://docs.rs/hyperx"

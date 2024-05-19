@@ -170,14 +170,10 @@ impl fmt::Display for ContentDisposition {
         for param in &self.parameters {
             match *param {
                 DispositionParam::Filename(ref charset, ref opt_lang, ref bytes) => {
-                    let mut use_simple_format: bool = false;
-                    if opt_lang.is_none() {
-                        if let Charset::Ext(ref ext) = *charset {
-                            if unicase::eq_ascii(&**ext, "utf-8") {
-                                use_simple_format = true;
-                            }
-                        }
-                    }
+                    let use_simple_format = String::from_utf8(bytes.clone())
+                        .map(|s| s.is_ascii())
+                        .unwrap_or(false);
+
                     if use_simple_format {
                         write!(
                             f,
@@ -281,6 +277,21 @@ mod tests {
             "attachment; filename=\"colourful.csv\"".to_owned(),
             display_rendered
         );
+
+        let a = ContentDisposition {
+            disposition: DispositionType::Attachment,
+            parameters: vec![DispositionParam::Filename(
+                Charset::Ext("UTF-8".to_owned()),
+                None,
+                "统计数据.txt".as_bytes().to_vec(),
+            )],
+        };
+        let as_string = "attachment; filename*=UTF-8''%E7%BB%9F%E8%AE%A1%E6%95%B0%E6%8D%AE.txt";
+        assert_eq!(as_string, a.to_string());
+
+        let r: Raw = as_string.into();
+        let b: ContentDisposition = ContentDisposition::parse_header(&r).unwrap();
+        assert_eq!(a, b);
     }
 }
 
